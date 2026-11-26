@@ -78,17 +78,17 @@ game.register('ending', () => ({
       gfx.text('FINAL SCORE', 240, 52, { size: 10, head: true, align: 'center', color: PAL.hi });
       this.sc.parts.forEach((p, i) => {
         if (i >= this.shown) return;
-        gfx.text(p.label, 60, 72 + i * 17, { size: 16 });
-        gfx.text(String(p.pts), 420, 72 + i * 17, { size: 16, align: 'right', color: PAL.good });
+        gfx.text(p.label, 60, 70 + i * 15, { size: 16 });
+        gfx.text(String(p.pts), 420, 70 + i * 15, { size: 16, align: 'right', color: PAL.good });
       });
       const n = this.sc.parts.length;
       if (this.shown >= n + 1) {
-        gfx.rect(60, 74 + n * 17, 360, 1, PAL.edge);
-        gfx.text(`Subtotal ${this.sc.subtotal}  ×${this.sc.mult} (${s.diffDef.name})`, 60, 78 + n * 17, { size: 16, color: PAL.dim });
+        gfx.rect(60, 72 + n * 15, 360, 1, PAL.edge);
+        gfx.text(`Subtotal ${this.sc.subtotal}  ×${this.sc.mult} (${s.diffDef.name})`, 60, 75 + n * 15, { size: 16, color: PAL.dim });
       }
       if (this.shown >= n + 2) {
-        gfx.text(`TOTAL: ${this.sc.total}`, 240, 100 + n * 17, { size: 14, head: true, align: 'center', color: PAL.hi });
-        gfx.text(`Rank: ${this.rank}`, 240, 120 + n * 17, { size: 16, align: 'center', color: PAL.teal });
+        gfx.text(`TOTAL: ${this.sc.total}`, 240, 96 + n * 15, { size: 14, head: true, align: 'center', color: PAL.hi });
+        gfx.text(`Rank: ${this.rank}`, 240, 114 + n * 15, { size: 16, align: 'center', color: PAL.teal });
       }
     } else {
       gfx.panel(20, 40, 440, 256);

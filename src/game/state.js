@@ -411,6 +411,7 @@ export class GameState {
 
   // Chance of a random event today.
   eventChance() {
+    if (typeof window !== 'undefined' && window.BBD_NOEVENTS) return 0;
     let p = 0.72;
     if (this.pace === 'floorit') p += 0.1;
     if (this.pace === 'mosey') p -= 0.1;
@@ -418,6 +419,7 @@ export class GameState {
   }
 
   breakdownRisk() {
+    if (typeof window !== 'undefined' && window.BBD_NOEVENTS) return 0;
     let p = 0.04 + ((100 - this.rv) / 100) * 0.12;
     if (this.pace === 'floorit') p += 0.04;
     if (this.inv.coffee > 0) p -= 0.01;

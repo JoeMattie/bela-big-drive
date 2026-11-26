@@ -55,6 +55,13 @@ async function boot() {
 
   const params = new URLSearchParams(location.search);
   const start = params.get('scene') || 'title';
+  // debug helpers: ?scene=travel&leg=sacramento&weather=rain&month=7&noevents
+  if (params.has('noevents')) window.BBD_NOEVENTS = 1;
+  if (params.has('freeze')) window.BBD_FREEZE = 1;
+  if (params.get('month')) game.state.reset('fresh', Number(params.get('month')));
+  if (params.get('leg')) { game.state.node = params.get('leg'); game.state.startLeg(Number(params.get('fork') || 0)); }
+  if (params.get('at')) game.state.node = params.get('at');
+  if (params.get('weather')) game.state.weather = params.get('weather');
   game.go(game.has(start) ? start : 'title', Object.fromEntries(params));
   window.game = game; // handy for debugging
 

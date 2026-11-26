@@ -1,0 +1,50 @@
+// Little speech bubbles the crew says while driving.
+// Each entry: [memberId, text, optional condition (s) => bool]
+export const CHATTER = [
+  ['joe', 'New podcast episode just dropped!'],
+  ['joe', 'Okay, I\'m adding that to the playlist.'],
+  ['joe', 'Is that noise new? That noise is new.'],
+  ['joe', 'I read the V10 can go 300k miles.'],
+  ['joe', 'Snack inventory: alarmingly low.'],
+  ['joe', 'We\'re making great time!', (s) => s.pace === 'floorit'],
+  ['joe', 'Is that a cow or a rock?', (s) => s.biome() === 'valley'],
+  ['joe', 'I can smell the garlic from here.', (s) => s.leg && s.leg.to === 'gilroy'],
+  ['joe', 'Smell that? That\'s the cows.', (s) => s.leg && s.leg.to === 'harris_ranch'],
+  ['joe', 'Those trees are taller than our house will be.', (s) => s.biome() === 'forest'],
+  ['joe', 'Oregon! The gas guy pumps it for us!', (s) => s.inOregon()],
+  ['caity', 'Hands at ten and two. Always.'],
+  ['caity', 'Who\'s hungry? I\'m hungry.'],
+  ['caity', 'Somebody check on the cats.'],
+  ['caity', 'This truck has been next to us for 40 miles.'],
+  ['caity', 'Look at that view!!'],
+  ['caity', 'I\'m not stopping for another gift shop.'],
+  ['caity', 'Okay, ONE gift shop.'],
+  ['caity', 'Bela, sit. BELA. Sit.', (s) => s.alive('bela')],
+  ['caity', 'Mt. Shasta! Look how BIG it is!', (s) => s.leg && ['mt_shasta', 'siskiyou'].includes(s.leg.to)],
+  ['caity', 'Rain. Get used to it, everybody.', (s) => s.inOregon() && ['rain', 'storm'].includes(s.weather)],
+  ['caity', 'Ugh, LA traffic.', (s) => s.biome() === 'city'],
+  ['caity', 'The ocean!!', (s) => ['coast', 'oregon_coast'].includes(s.biome())],
+  ['bela', '*HEAD OUT WINDOW, EARS FLAPPING*'],
+  ['bela', '*sniff sniff sniff sniff*'],
+  ['bela', '*snores loudly*'],
+  ['bela', '*stares at Joe\'s sandwich*'],
+  ['bela', 'WOOF! (a cow)', (s) => s.biome() === 'valley'],
+  ['bela', '*boop* (nose print on window)'],
+  ['bela', '*zoomies in a 31-foot hallway*'],
+  ['muskrat', '*is inside a cabinet somehow*'],
+  ['muskrat', 'mrrp?'],
+  ['muskrat', '*watching birds through windshield*'],
+  ['muskrat', '*trying to open the door*'],
+  ['muskrat', '*knocks pen off dashboard*'],
+  ['pookah', '*loaf mode: activated*'],
+  ['pookah', 'Mrow. (disapproving)'],
+  ['pookah', '*purrs on Joe\'s lap*'],
+  ['pookah', '*sheds 4% of total body mass*'],
+  ['pookah', '*sunbathing on the dashboard*', (s) => ['sunny', 'hot'].includes(s.weather)],
+  ['pookah', '*hides under the bed*', (s) => s.biome() === 'city' || s.weather === 'storm'],
+];
+
+// Freeway sign destinations by region (shown on green signs scrolling by)
+export function signFor(s, toName, miles) {
+  return { top: toName.split(',')[0].replace('The ', ''), miles };
+}
