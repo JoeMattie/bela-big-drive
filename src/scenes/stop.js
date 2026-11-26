@@ -72,6 +72,7 @@ game.register('stop', () => ({
       items.push({ label: 'Look around', onPick: () => this.lookAround() });
     }
     if (n.kind === 'casino') items.push({ label: 'Try the slot machines', onPick: () => game.push('casino') });
+    if (n.kind === 'town' || n.kind === 'casino') items.push({ label: 'Pick up a side gig (1 day)', onPick: () => this.gig() });
     items.push({ label: 'Talk to people', onPick: () => this.talk() });
     if (n.kind === 'town' || n.kind === 'casino') items.push({ label: `Dump the black tank ($15) [${Math.round(s.tank)}%]`, disabled: s.tank < 5, onPick: () => this.dump() });
     items.push({ label: 'Read online reviews', onPick: () => this.reviews() });
@@ -113,6 +114,23 @@ game.register('stop', () => ({
     if (i === 0) s.addVibes(2);
     const l = lines[i];
     showResult({ title: 'You talk to ' + l.who, text: '"' + l.text.replace(/^"|"$/g, '') + '"' });
+  },
+  gig() {
+    const GIGS = [
+      ['a cafe with fast WiFi', 'A long day of laptops, oat-milk lattes and one very confusing client call.'],
+      ['a farmers market', 'You sell hand-drawn stickers of Bela from a folding table. Bela poses for photos. Business booms.'],
+      ['a moving company', 'You spend the day carrying other people\'s couches. Ironic, given the circumstances.'],
+      ['the RV park office', 'You help the park host fix their website in exchange for cash and a lifetime of gratitude.'],
+      ['a pet-sitting app', 'You walk six dogs at once. Bela is jealous of every single one.'],
+    ];
+    const [where, text] = GIGS[Math.floor(Math.random() * GIGS.length)];
+    runResultFn((s) => {
+      const pay = 140 + Math.floor(Math.random() * 160) + (s.alive('caity') && s.alive('joe') ? 60 : 0);
+      s.earn(pay);
+      const notes = s.endDay({ stayed: true });
+      s.addVibes(-2);
+      return { title: 'Side Gig: ' + where, tone: 'good', text: text + (notes.length ? ' ' + notes.filter((x) => !x.departure).map((x) => x.text).join(' ') : '') };
+    }, () => this.build());
   },
   dump() {
     const s = game.state;
