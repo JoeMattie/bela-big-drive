@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bela's Big Drive — Audio Audition</title>
+<style>
+  @font-face {
+    font-family: 'Silkscreen';
+    src: url('../assets/fonts/Silkscreen-Regular.ttf') format('truetype');
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'VT323';
+    src: url('../assets/fonts/VT323-Regular.ttf') format('truetype');
+    font-display: swap;
+  }
+  :root {
+    --bg: #171226;
+    --panel: #241b3d;
+    --panel-2: #2f2350;
+    --ink: #f6e8c8;
+    --dim: #b6a5d4;
+    --teal: #57d6c4;
+    --coral: #ff8a70;
+    --gold: #ffd166;
+    --line: #4b3a73;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    background:
+      radial-gradient(circle at 15% 0%, #33245a 0, transparent 42%),
+      radial-gradient(circle at 92% 8%, #1e3f4a 0, transparent 38%),
+      var(--bg);
+    color: var(--ink);
+    font-family: 'VT323', monospace;
+    font-size: 21px;
+    padding: 26px 20px 48px;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; }
+  header { margin-bottom: 18px; }
+  h1 {
+    font-family: 'Silkscreen', monospace;
+    font-size: clamp(20px, 4vw, 32px);
+    line-height: 1.12;
+    margin: 0 0 6px;
+    color: var(--gold);
+    letter-spacing: 1px;
+    text-shadow: 0 3px 0 #7a3b16, 0 5px 0 rgba(0,0,0,.35);
+  }
+  .sub { color: var(--dim); margin: 0; }
+  .bar {
+    margin-top: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    align-items: center;
+    background: rgba(36, 27, 61, .78);
+    border: 2px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 13px;
+  }
+  .bar label { display: flex; align-items: center; gap: 8px; color: var(--dim); }
+  input[type=range] { accent-color: var(--teal); width: 120px; }
+  button {
+    font-family: 'Silkscreen', monospace;
+    font-size: 11px;
+    letter-spacing: .5px;
+    color: var(--ink);
+    background: linear-gradient(#4c3b7d, #352959);
+    border: 2px solid #6a55a0;
+    border-bottom-width: 4px;
+    border-radius: 8px;
+    padding: 10px 11px 9px;
+    cursor: pointer;
+    text-align: left;
+    min-height: 46px;
+    transition: transform .04s ease, filter .1s ease;
+  }
+  button:hover { filter: brightness(1.16); }
+  button:active { transform: translateY(2px); border-bottom-width: 2px; }
+  button.sfx { background: linear-gradient(#5d3d63, #432c4b); border-color: #8d5d90; }
+  button.active {
+    background: linear-gradient(#2d8a7f, #22675f);
+    border-color: var(--teal);
+    color: #eafffb;
+    box-shadow: 0 0 0 2px rgba(87, 214, 196, .18), 0 0 18px rgba(87, 214, 196, .25);
+  }
+  button.stop {
+    background: linear-gradient(#8a3d3d, #642a2a);
+    border-color: #c96a6a;
+    color: #ffe7e2;
+  }
+  button.mute {
+    background: linear-gradient(#8a6a26, #654a16);
+    border-color: var(--gold);
+    color: #fff7dc;
+  }
+  button.mute.on { background: linear-gradient(#3f7e96, #2b5c70); border-color: var(--teal); }
+  h2 {
+    font-family: 'Silkscreen', monospace;
+    font-size: 13px;
+    color: var(--teal);
+    letter-spacing: 1.2px;
+    margin: 22px 0 10px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
+    gap: 10px;
+  }
+  .sfx-grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
+  .now {
+    margin-top: 16px;
+    min-height: 30px;
+    color: var(--gold);
+    font-size: 22px;
+  }
+  .now b { color: var(--teal); font-weight: normal; }
+  .status {
+    margin-top: 4px;
+    color: var(--dim);
+    font-size: 17px;
+    white-space: pre-wrap;
+  }
+  .note {
+    margin-top: 26px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--line);
+    color: var(--dim);
+    font-size: 17px;
+    line-height: 1.35;
+  }
+  kbd {
+    font-family: 'Silkscreen', monospace;
+    font-size: 10px;
+    background: #352959;
+    border: 1px solid #6a55a0;
+    border-radius: 4px;
+    padding: 1px 4px;
+  }
+  #selftest {
+    display: none;
+    margin-top: 22px;
+    padding: 14px;
+    border: 2px solid var(--line);
+    border-radius: 10px;
+    background: #120e1f;
+    color: #c9f6e8;
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 13px;
+    white-space: pre-wrap;
+  }
+  body.selftest #selftest { display: block; }
+  body.selftest .bar, body.selftest .grid, body.selftest .now,
+  body.selftest .status, body.selftest .note { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>BELA'S BIG DRIVE</h1>
+    <p class="sub">Chiptune audio audition — every track and every sound effect, synthesized live in your browser.</p>
+  </header>
+
+  <div class="bar">
+    <button id="muteBtn" class="mute" type="button">MUTE: OFF</button>
+    <label>Music <input id="musicVol" type="range" min="0" max="1" step="0.01" value="0.72" /></label>
+    <label>SFX <input id="sfxVol" type="range" min="0" max="1" step="0.01" value="0.85" /></label>
+    <button id="stopBtn" class="stop" type="button">STOP MUSIC</button>
+  </div>
+
+  <h2>MUSIC (click to crossfade)</h2>
+  <div class="grid" id="trackGrid"></div>
+
+  <h2>SOUND EFFECTS (click to fire)</h2>
+  <div class="grid sfx-grid" id="sfxGrid"></div>
+
+  <div class="now" id="now">Now playing: <b>—</b></div>
+  <div class="status" id="status">Audio is idle. Click anything to unlock audio.</div>
+
+  <p class="note">
+    Tip: this page imports <code>../src/engine/audio.js</code> directly. Nothing is pre-recorded —
+    all music and SFX are generated by oscillators, noise and envelopes. Mute is stored in
+    <code>localStorage['bbd_muted']</code>.
+  </p>
+
+  <div id="selftest"></div>
+</div>
+
+<script type="module">
+import { audio } from '../src/engine/audio.js';
+
+const params = new URLSearchParams(location.search);
+const isSelftest = params.get('selftest') === '1';
+
+// In self-test mode, tap the engine's master limiter so we can measure the
+// actual synthesized signal (nonzero level, no hard clipping).
+let limiterTap = null;
+if (isSelftest && typeof AudioNode !== 'undefined') {
+  const origConnect = AudioNode.prototype.connect;
+  AudioNode.prototype.connect = function patchedConnect(dest, ...rest) {
+    const result = origConnect.call(this, dest, ...rest);
+    try {
+      if (dest && dest === this.context.destination) limiterTap = this;
+    } catch { /* ignore */ }
+    return result;
+  };
+}
+
+const TRACK_LABELS = {
+  title: 'Title — Open Road',
+  travel: 'Travel — Driving',
+  travel_rain: 'Travel Rain — Night',
+  town: 'Town — Shopping',
+  store: 'Store — Muzak',
+  landmark: 'Landmark — Scenic',
+  tension: 'Tension — Danger',
+  minigame: 'Minigame — Fast',
+  campfire: 'Campfire — Lullaby',
+  victory: 'Victory — Fanfare',
+  gameover: 'Game Over — Trombone',
+};
+
+const SFX_LABELS = {
+  select: 'Select',
+  confirm: 'Confirm',
+  back: 'Back',
+  type: 'Type tick',
+  cash: 'Cash register',
+  honk: 'RV horn',
+  engine: 'V10 engine',
+  pop: 'Tire blowout',
+  thud: 'Damage thud',
+  woof: 'Bela woof',
+  meow: 'Cat meow',
+  hiss: 'Hiss',
+  buzz: 'Wasp buzz',
+  pickup: 'Berry pickup',
+  splash: 'Splash',
+  crash: 'Crash',
+  ding: 'Ding',
+  bad: 'Bad news',
+  good: 'Good news',
+  rain: 'Rain burst',
+  thunder: 'Thunder',
+  step: 'Footstep',
+};
+
+const trackGrid = document.getElementById('trackGrid');
+const sfxGrid = document.getElementById('sfxGrid');
+const nowEl = document.getElementById('now');
+const statusEl = document.getElementById('status');
+const muteBtn = document.getElementById('muteBtn');
+const stopBtn = document.getElementById('stopBtn');
+const musicVol = document.getElementById('musicVol');
+const sfxVol = document.getElementById('sfxVol');
+const selfTestEl = document.getElementById('selftest');
+
+let currentTrack = null;
+
+function describeContext() {
+  const ctx = audio.init();
+  if (!ctx) return 'No Web Audio API available in this browser.';
+  return `AudioContext: ${ctx.state} • ${Math.round(ctx.sampleRate)} Hz • ${ctx.baseLatency ? 'latency ' + (ctx.baseLatency * 1000).toFixed(0) + ' ms' : 'synthesized live'}`;
+}
+
+function refreshStatus(extra = '') {
+  statusEl.textContent = `${describeContext()}${extra ? '\n' + extra : ''}`;
+}
+
+function setMuteUI() {
+  const m = audio.isMuted();
+  muteBtn.textContent = m ? 'MUTE: ON' : 'MUTE: OFF';
+  muteBtn.classList.toggle('on', m);
+}
+
+function markTrack(id) {
+  currentTrack = id;
+  for (const btn of trackGrid.querySelectorAll('button')) {
+    btn.classList.toggle('active', btn.dataset.id === id);
+  }
+  nowEl.innerHTML = `Now playing: <b>${id ? TRACK_LABELS[id] || id : '—'}</b>`;
+}
+
+function makeTrackButton(id) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.dataset.id = id;
+  btn.textContent = TRACK_LABELS[id] || id;
+  btn.addEventListener('click', () => {
+    audio.init();
+    audio.setMusicVolume(Number(musicVol.value));
+    audio.playMusic(id);
+    markTrack(id);
+    refreshStatus(`playMusic('${id}')`);
+  });
+  trackGrid.appendChild(btn);
+}
+
+function makeSfxButton(id) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'sfx';
+  btn.dataset.id = id;
+  btn.textContent = SFX_LABELS[id] || id;
+  btn.addEventListener('click', () => {
+    audio.init();
+    audio.setSfxVolume(Number(sfxVol.value));
+    audio.sfx(id);
+    refreshStatus(`sfx('${id}')`);
+  });
+  sfxGrid.appendChild(btn);
+}
+
+for (const id of Object.keys(TRACK_LABELS)) makeTrackButton(id);
+for (const id of Object.keys(SFX_LABELS)) makeSfxButton(id);
+
+muteBtn.addEventListener('click', () => {
+  audio.init();
+  audio.setMuted(!audio.isMuted());
+  setMuteUI();
+  refreshStatus();
+});
+
+stopBtn.addEventListener('click', () => {
+  audio.stopMusic(0.4);
+  markTrack(null);
+  refreshStatus("stopMusic(0.4)");
+});
+
+musicVol.addEventListener('input', () => {
+  audio.setMusicVolume(Number(musicVol.value));
+});
+sfxVol.addEventListener('input', () => {
+  audio.setSfxVolume(Number(sfxVol.value));
+});
+
+// First gesture anywhere is enough to unlock the context.
+document.addEventListener('pointerdown', () => audio.init(), { passive: true });
+document.addEventListener('keydown', () => audio.init());
+
+// Keyboard shortcuts: 1-9 / 0 play tracks, S stops.
+window.addEventListener('keydown', (e) => {
+  if (e.target && /input|textarea/i.test(e.target.tagName)) return;
+  const ids = Object.keys(TRACK_LABELS);
+  const n = Number(e.key);
+  if (n >= 1 && n <= 9) {
+    const id = ids[n - 1];
+    if (id) { audio.init(); audio.playMusic(id); markTrack(id); refreshStatus(); }
+  } else if (e.key === '0' && ids[9]) {
+    audio.init(); audio.playMusic(ids[9]); markTrack(ids[9]); refreshStatus();
+  } else if (e.key.toLowerCase() === 's') {
+    audio.stopMusic(0.4); markTrack(null); refreshStatus();
+  }
+});
+
+setMuteUI();
+musicVol.value = '0.72';
+sfxVol.value = '0.85';
+refreshStatus();
+
+/* ------------------------------------------------------------------ */
+/* ?selftest=1 — headless smoke test used by tools/audio_node_test     */
+/* ------------------------------------------------------------------ */
+if (isSelftest) {
+  document.body.classList.add('selftest');
+  const lines = [];
+  const errors = [];
+  const log = (s) => { lines.push(s); selfTestEl.textContent = lines.join('\n'); };
+  window.addEventListener('error', (e) => errors.push(String(e.message || e.error)));
+  window.addEventListener('unhandledrejection', (e) => errors.push(String(e.reason)));
+
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  (async () => {
+    try {
+      const ctx = audio.init();
+      log(`init: ${ctx ? ctx.state + ' @ ' + Math.round(ctx.sampleRate) + 'Hz' : 'NO CONTEXT'}`);
+      if (!ctx) errors.push('no AudioContext');
+
+      // Signal tap: limiter -> analyser -> silent gain -> destination.
+      let measure = async () => ({ peak: 0, rms: 0 });
+      if (ctx && limiterTap) {
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 2048;
+        const silent = ctx.createGain();
+        silent.gain.value = 0;
+        limiterTap.connect(analyser);
+        analyser.connect(silent);
+        silent.connect(ctx.destination);
+        const buf = new Float32Array(analyser.fftSize);
+        measure = (ms) => new Promise((resolve) => {
+          let peak = 0;
+          let sum = 0;
+          let n = 0;
+          const started = performance.now();
+          const iv = setInterval(() => {
+            analyser.getFloatTimeDomainData(buf);
+            for (let i = 0; i < buf.length; i += 1) {
+              const v = buf[i];
+              const a = Math.abs(v);
+              if (a > peak) peak = a;
+              sum += v * v;
+              n += 1;
+            }
+            if (performance.now() - started >= ms) {
+              clearInterval(iv);
+              resolve({ peak, rms: n ? Math.sqrt(sum / n) : 0 });
+            }
+          }, 20);
+        });
+        log('signal tap: ready');
+      } else {
+        log('signal tap: UNAVAILABLE');
+      }
+
+      // Play every track briefly so the scheduler actually synthesizes notes,
+      // and measure that real audio reaches the master limiter.
+      let loudest = 0;
+      for (const id of Object.keys(TRACK_LABELS)) {
+        audio.playMusic(id);
+        const m = await measure(420);
+        loudest = Math.max(loudest, m.peak);
+        log(`track: ${id} ok (peak ${m.peak.toFixed(3)}, rms ${m.rms.toFixed(4)})`);
+        if (m.peak < 0.002) errors.push(`track ${id} is silent`);
+        if (m.peak > 1.0) errors.push(`track ${id} clips (${m.peak.toFixed(3)})`);
+      }
+      log(`loudest track peak: ${loudest.toFixed(3)}`);
+
+      // Stop the music so the SFX measurements are clean.
+      audio.stopMusic(0.1);
+      await sleep(350);
+
+      for (const id of Object.keys(SFX_LABELS)) {
+        audio.sfx(id);
+        const m = await measure(200);
+        log(`sfx: ${id} ok (peak ${m.peak.toFixed(3)})`);
+        if (m.peak < 0.0005) errors.push(`sfx ${id} is silent`);
+        if (m.peak > 1.0) errors.push(`sfx ${id} clips (${m.peak.toFixed(3)})`);
+        await sleep(180);
+      }
+
+      for (let i = 0; i < 20; i += 1) audio.sfx('type');
+      log('type x20 ok');
+
+      // Worst case: loud music + all the big one-shots at 100% volume.
+      audio.setMusicVolume(1);
+      audio.setSfxVolume(1);
+      audio.playMusic('minigame');
+      await sleep(450);
+      const stressPromise = measure(1000);
+      const loudIds = [
+        'crash', 'pop', 'thud', 'engine', 'honk', 'ding', 'cash',
+        'thunder', 'good', 'bad', 'rain', 'woof', 'meow',
+      ];
+      for (let round = 0; round < 3; round += 1) {
+        for (const id of loudIds) audio.sfx(id);
+        await sleep(90);
+      }
+      const stress = await stressPromise;
+      log(`stress mix: peak ${stress.peak.toFixed(3)}, rms ${stress.rms.toFixed(4)}`);
+      if (stress.peak >= 1.0) errors.push(`stress mix clips (${stress.peak.toFixed(3)})`);
+      audio.stopMusic(0.08);
+      await sleep(250);
+      audio.setMusicVolume(0.72);
+      audio.setSfxVolume(0.85);
+
+      audio.setMuted(true);
+      log(`mute: ${audio.isMuted()} / storage=${localStorage.getItem('bbd_muted')}`);
+      audio.sfx('cash');
+      audio.setMuted(false);
+      log(`unmute: ${audio.isMuted()} / storage=${localStorage.getItem('bbd_muted')}`);
+
+      audio.setMusicVolume(0);
+      audio.setMusicVolume(1);
+      audio.setMusicVolume(0.72);
+      audio.setSfxVolume(0);
+      audio.setSfxVolume(0.85);
+      audio.playMusic('title');
+      await sleep(120);
+      audio.stopMusic(0.05);
+      audio.stopMusic();
+      audio.playMusic('does_not_exist');
+      audio.sfx('does_not_exist');
+      log('volumes / stop / unknown ids ok');
+
+      if (errors.length) throw new Error(errors.join(' | '));
+      log('RESULT: AUDIO_SELFTEST_PASS');
+      document.title = 'AUDIO_SELFTEST_PASS';
+      document.body.dataset.selftest = 'pass';
+    } catch (err) {
+      log('RESULT: AUDIO_SELFTEST_FAIL');
+      log(String(err && err.stack ? err.stack : err));
+      document.title = 'AUDIO_SELFTEST_FAIL';
+      document.body.dataset.selftest = 'fail';
+    }
+  })();
+}
+</script>
+</body>
+</html>
