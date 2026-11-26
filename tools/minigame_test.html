@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <base href="../">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <link rel="icon" href="data:,">
+  <title>Minigame Test Bench</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #0e0a14; color: #f7ecd2; font-family: monospace; overflow: hidden; touch-action: none; }
+    body { display: flex; align-items: center; justify-content: center; }
+    canvas { image-rendering: pixelated; display: block; touch-action: none; outline: none; }
+    #bar { position: fixed; top: 0; left: 0; right: 0; padding: 4px 8px; background: rgba(0,0,0,.7); z-index: 2; font-size: 12px; }
+    #bar button, #bar select, #bar input { font: inherit; }
+    #log { position: fixed; bottom: 0; left: 0; right: 0; max-height: 30%; overflow: auto; background: rgba(0,0,0,.7); font-size: 11px; padding: 2px 8px; z-index: 2; }
+  </style>
+</head>
+<body>
+  <div id="bar">
+    <select id="mg">
+      <option value="forage">forage</option>
+      <option value="freeway">freeway</option>
+      <option value="catchase">catchase</option>
+    </select>
+    params JSON <input id="params" size="40" value='{}'>
+    <button id="go">Launch</button>
+    <span>(URL: ?mg=freeway&amp;params={"theme":"snow"}&amp;nobar=1)</span>
+  </div>
+  <pre id="log"></pre>
+  <canvas id="game" width="480" height="300" tabindex="0"></canvas>
+  <script>window.BBD_VERSION = 'dev' + Date.now();</script>
+  <script type="module">
+    import { gfx, PAL, FONT_BODY, FONT_HEAD } from './src/engine/gfx.js';
+    import { input } from './src/engine/input.js';
+    import { assets } from './src/engine/assets.js';
+    import { audio } from './src/engine/audio.js';
+    import { game } from './src/game/game.js';
+    import './src/scenes/mg_forage.js';
+    import './src/scenes/mg_freeway.js';
+    import './src/scenes/mg_catchase.js';
+
+    const KEYS = [];
+    for (const s of ['rv_top', 'joe_walk', 'caity_walk', 'bela_walk', 'muskrat_walk', 'pookah_walk']) KEYS.push('sprites/' + s);
+    for (const m of ['forage_bg', 'bramble', 'bramble_ripe', 'berry', 'wasp', 'poison_oak', 'basket', 'road_tile', 'cars', 'semi', 'hazards', 'gas_can', 'reststop_bg']) KEYS.push('minigame/' + m);
+    KEYS.push('icons/treats');
+
+    const logEl = document.getElementById('log');
+    const log = (...a) => { console.log(...a); logEl.textContent += a.map((x) => typeof x === 'string' ? x : JSON.stringify(x)).join(' ') + '\n'; logEl.scrollTop = 1e9; };
+    window.__outcomes = [];
+
+    // Idle placeholder scene underneath the minigame overlay.
+    game.register('mg_idle', () => ({
+      draw() {
+        gfx.rect(0, 0, 480, 300, PAL.night);
+        gfx.text('Minigame finished - pick another above', 240, 140, { size: 16, align: 'center', color: PAL.dim });
+      },
+    }));
+
+    function launch(name, params) {
+      game.go('mg_idle');
+      game.fade = 0;
+      game.push(name, {
+        ...params,
+        onFinish: (outcome) => {
+          window.__outcomes.push({ name, outcome });
+          log('[outcome]', name, outcome);
+          game.pop();
+        },
+      });
+      log('[launch]', name, params);
+    }
+    window.launch = launch;
+
+    async function boot() {
+      const canvas = document.getElementById('game');
+      gfx.init(canvas);
+      input.init(canvas);
+      input.onFirstGesture = () => audio.init();
+      const fonts = [
+        new FontFace(FONT_BODY, 'url(assets/fonts/VT323-Regular.ttf)'),
+        new FontFace(FONT_HEAD, 'url(assets/fonts/PressStart2P-Regular.ttf)'),
+      ];
+      await Promise.all(fonts.map((f) => f.load().then((ff) => document.fonts.add(ff)).catch(() => null)));
+      const q = new URLSearchParams(location.search);
+      if (!q.has('noart')) await assets.loadAll(KEYS);
+      if (q.has('nobar')) { document.getElementById('bar').style.display = 'none'; logEl.style.display = 'none'; }
+      const mg = q.get('mg') || 'forage';
+      let params = {};
+      try { params = JSON.parse(q.get('params') || '{}'); } catch (_) { /* ignore */ }
+      document.getElementById('mg').value = mg;
+      document.getElementById('params').value = JSON.stringify(params);
+      document.getElementById('go').onclick = () => {
+        let p = {};
+        try { p = JSON.parse(document.getElementById('params').value || '{}'); } catch (e) { log('bad JSON'); }
+        launch(document.getElementById('mg').value, p);
+        document.getElementById('go').blur();
+        canvas.focus();
+      };
+      launch(mg, params);
+      window.game = game;
+
+      // Fixed-step mode for automated tests: window.__step(seconds)
+      let manual = q.has('manual');
+      const tick = (dt) => {
+        game.update(dt);
+        game.tickFade(dt);
+        gfx.begin();
+        game.draw();
+        gfx.end(dt);
+        input.endFrame();
+      };
+      window.__step = (sec, dt = 1 / 60) => { for (let t = 0; t < sec - 1e-9; t += dt) tick(dt); };
+      window.__input = input;
+      let last = performance.now();
+      const frame = (now) => {
+        const dt = Math.min(0.05, (now - last) / 1000);
+        last = now;
+        if (!manual) tick(dt);
+        requestAnimationFrame(frame);
+      };
+      requestAnimationFrame(frame);
+    }
+    boot();
+  </script>
+</body>
+</html>
