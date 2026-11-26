@@ -70,7 +70,15 @@ game.register('travel', () => ({
       }
     }
     if (r.dayOver && !outOfGas) {
-      q.push((done) => { const notes = s.endDay(); const sub = []; this.pushNotes(sub, notes); this.queue.unshift(...sub); done(); });
+      q.push((done) => {
+        const where = s.whereName();
+        const sleep = s.sleep;
+        const notes = s.endDay();
+        const sub = [(d2) => { game.push('night', { where, sleep, onDone: d2 }); }];
+        this.pushNotes(sub, notes);
+        this.queue.unshift(...sub);
+        done();
+      });
     }
     q.push((done) => { if (s.rv <= 0) this.totalled(done); else done(); });
     if (r.arrived) q.push(() => this.arrive());

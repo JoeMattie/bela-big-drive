@@ -198,3 +198,32 @@ game.register('rest', () => ({
     }
   },
 }));
+
+// Brief overnight interstitial between driving days.
+const NIGHT_LINES = {
+  rvpark: ['Hookups! Hot showers! A neighbor\'s wind chimes!', 'The park host waves a golf cart at you.', 'Full hookups. The black tank is empty. Joy.'],
+  walmart: ['Sodium lights hum. A semi idles all night.', 'Free parking and a midnight snack run.', 'Bela watches the cart corral like a hawk.'],
+  boondock: ['Not a single light for miles.', 'Coyotes yip somewhere far away.', 'Just you, the stars, and the propane furnace.'],
+};
+game.register('night', () => ({
+  enter({ where, sleep, onDone }) {
+    this.t = 0; this.where = where; this.sleep = sleep; this.onDone = onDone;
+    const l = NIGHT_LINES[sleep] || NIGHT_LINES.rvpark;
+    this.line = l[Math.floor(Math.random() * l.length)];
+    this.nightNo = game.state.day;
+  },
+  update(dt) {
+    this.t += dt;
+    if (this.t > 2.6 || (this.t > 0.3 && input.anyKey())) { game.pop(); if (this.onDone) this.onDone(); }
+  },
+  draw() {
+    const a = Math.min(1, this.t * 3, (2.6 - this.t) * 3);
+    gfx.alpha(Math.max(0, a), () => {
+      gfx.rect(0, 0, 480, 300, '#000');
+      drawScene(this.sleep === 'walmart' ? 'walmart_night' : 'campsite_night', 0, 30, 480, 200, this.t);
+      gfx.text(`Night ${this.nightNo} · ${(SLEEPS[this.sleep] || SLEEPS.rvpark).name}`, 240, 8, { size: 10, head: true, align: 'center', color: PAL.hi });
+      gfx.text(this.where, 240, 236, { size: 16, align: 'center', color: PAL.dim });
+      gfx.text(this.line, 240, 256, { size: 16, align: 'center' });
+    });
+  },
+}));
