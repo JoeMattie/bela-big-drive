@@ -101,10 +101,18 @@ game.register('ending', () => ({
         st.casino ? `Casino: ${st.casino >= 0 ? 'won' : 'lost'} $${Math.abs(st.casino)}` : 'Never gambled. Wise.',
       ];
       facts.forEach((f, i) => gfx.text(f, 240, 70 + i * 17, { size: 16, align: 'center', color: PAL.text }));
-      const hl = s.journal.filter((j) => !j.text.startsWith('Arrived')).slice(-6);
-      gfx.text('Highlights:', 40, 146, { size: 16, color: PAL.dim });
-      hl.forEach((j, i) => gfx.text(`${j.date}: ${j.text}`.slice(0, 64), 40, 164 + i * 17, { size: 14 }));
-      s.members.forEach((m, i) => drawPortrait(m.id, 92 + i * 60, 238 - 0, m.gone ? 'neutral' : 'happy', { size: 32, gone: m.gone }));
+      // postcards from every stop (thumbnails of the landmark art)
+      const stops = s.visited.filter((id, i, a) => a.indexOf(id) === i && assets.get('scenes/' + id));
+      const cols = 6, pw = 62, ph = 26, gx = 6, gy = 14;
+      const shown = Math.min(stops.length, Math.floor(this.t * 6));
+      const x0 = 240 - (cols * (pw + gx) - gx) / 2;
+      stops.slice(0, Math.min(shown, 18)).forEach((id, i) => {
+        const x = x0 + (i % cols) * (pw + gx), y = 140 + Math.floor(i / cols) * (ph + gy);
+        gfx.rect(x - 2, y - 2, pw + 4, ph + 4, '#f7ecd2');
+        gfx.image(assets.get('scenes/' + id), x, y, { w: pw, h: ph });
+        gfx.text(NODES[id].name.split(',')[0].replace('The ', '').slice(0, 12), x + pw / 2, y + ph + 1, { size: 10, align: 'center', color: PAL.dim, shadow: false });
+      });
+      gfx.text('Postcards from the road', 240, 124, { size: 14, align: 'center', color: PAL.hi });
       continueHint(this.t, 240, 280, 'Press any key to enter the Hall of Fame');
     }
   },

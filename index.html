@@ -7,16 +7,28 @@
   <title>Bela's Big Drive</title>
   <meta name="description" content="A pixel-art road trip survival game: one 1999 Class A RV, two humans, a bull terrier and two cats, San Diego to Portland.">
   <link rel="icon" href="assets/ui/favicon.png">
+  <link rel="apple-touch-icon" href="assets/ui/icon192.png">
+  <meta property="og:title" content="Bela's Big Drive">
+  <meta property="og:description" content="San Diego to Portland in a 1999 Class A RV with two humans, a bull terrier and two cats. A pixel-art road trip survival game.">
+  <meta property="og:image" content="https://joemattie.github.io/bela-big-drive/assets/ui/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <style>
     html, body { margin: 0; height: 100%; background: #0e0a14; overflow: hidden; touch-action: none; }
     body { display: flex; align-items: center; justify-content: center; }
     canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; touch-action: none; outline: none; }
     noscript { color: #f7ecd2; font-family: monospace; }
+    #rotate { display: none; position: fixed; bottom: 18px; left: 0; right: 0; text-align: center; color: #c8873a; font: 16px monospace; pointer-events: none; }
+    @media (orientation: portrait) and (max-width: 700px) {
+      body { flex-direction: column; }
+      #rotate { display: block; }
+    }
   </style>
 </head>
 <body>
   <canvas id="game" width="480" height="300" tabindex="0"></canvas>
   <noscript>This game needs JavaScript.</noscript>
+  <div id="rotate">↻ Rotate your phone for a bigger windshield</div>
   <script>window.BBD_VERSION = '1';</script>
   <script type="module" src="src/main.js"></script>
 </body>
