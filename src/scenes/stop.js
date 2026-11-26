@@ -1,0 +1,195 @@
+import { gfx, PAL } from '../engine/gfx.js';
+import { input } from '../engine/input.js';
+import { audio } from '../engine/audio.js';
+import { Menu, Typewriter, continueHint, drawPortrait, bar } from '../engine/ui.js';
+import { drawScene } from '../engine/art.js';
+import { game } from '../game/game.js';
+import { NODES } from '../data/route.js';
+import { MEMBER } from '../data/party.js';
+import { showResult, runResultFn } from './message.js';
+import { commonItems, checkGameOver } from './common.js';
+import { saveGame, getReviews } from '../game/save.js';
+import * as TALKMOD from '../data/talk.js';
+
+const TALK = TALKMOD.TALK || {};
+const REVIEWS = TALKMOD.REVIEWS || {};
+
+// Arrival at a node: big scene + blurb, then the stop menu.
+game.register('arrive', () => ({
+  enter() {
+    const s = game.state;
+    this.t = 0;
+    this.n = s.nodeData;
+    this.tw = new Typewriter(this.n.blurb, 440, 16, 85);
+    audio.playMusic(this.n.kind === 'end' ? 'victory' : this.n.kind === 'pass' || this.n.kind === 'ferry' ? 'tension' : this.n.kind === 'town' || this.n.kind === 'casino' ? 'town' : 'landmark');
+    s.log(`Arrived at ${this.n.name}.`);
+    audio.sfx('ding');
+  },
+  update(dt) {
+    this.t += dt;
+    this.tw.update(dt);
+    if (input.anyKey()) {
+      if (!this.tw.done) { this.tw.finish(); return; }
+      const k = this.n.kind;
+      if (k === 'end') game.go('ending');
+      else if (k === 'pass' || k === 'ferry') game.go('crossing');
+      else game.go('stop');
+    }
+  },
+  draw() {
+    const s = game.state;
+    drawScene(s.node, 0, 0, 480, 200, this.t);
+    // name banner slides in
+    const k = Math.min(1, this.t * 2.5);
+    const bw = 330;
+    const bx = 240 - bw / 2;
+    gfx.alpha(0.85, () => gfx.rect(bx, 8 - (1 - k) * 40, bw, 30, '#1b1424'));
+    gfx.strokeRect(bx, 8 - (1 - k) * 40, bw, 30, PAL.edge);
+    gfx.text(this.n.name.toUpperCase(), 240, 17 - (1 - k) * 40, { size: 12, head: true, align: 'center', color: PAL.hi });
+    gfx.panel(0, 196, 480, 104);
+    gfx.text(s.dateStr() + (this.n.elev ? `  ·  Elevation ${this.n.elev.toLocaleString()} ft` : ''), 20, 206, { size: 14, color: PAL.dim });
+    this.tw.draw(20, 224, PAL.text, 18);
+    if (this.tw.done) continueHint(this.t, 240, 284);
+  },
+}));
+
+game.register('stop', () => ({
+  enter() {
+    this.t = 0;
+    this.build();
+    saveGame(game.state);
+  },
+  resume() { this.build(); checkGameOver(); },
+  build() {
+    const s = game.state;
+    const n = s.nodeData;
+    this.n = n;
+    const items = [{ label: 'Continue on the road', onPick: () => this.leave() }];
+    if (n.kind === 'town' || n.kind === 'casino' || n.kind === 'start') {
+      items.push({ label: 'Buy gas & supplies', onPick: () => game.push('store', {}) });
+    }
+    if (n.kind === 'landmark' && !s.flags['look_' + s.node]) {
+      items.push({ label: 'Look around', onPick: () => this.lookAround() });
+    }
+    if (n.kind === 'casino') items.push({ label: 'Try the slot machines', onPick: () => game.push('casino') });
+    items.push({ label: 'Talk to people', onPick: () => this.talk() });
+    if (n.kind === 'town' || n.kind === 'casino') items.push({ label: `Dump the black tank ($15) [${Math.round(s.tank)}%]`, disabled: s.tank < 5, onPick: () => this.dump() });
+    items.push({ label: 'Read online reviews', onPick: () => this.reviews() });
+    items.push(...commonItems(s));
+    const sel = this.menu ? this.menu.sel : 0;
+    this.menu = new Menu(items, { x: 30, y: 70, w: 250, sel: Math.min(sel, items.length - 1), size: 16, lh: 16, maxRows: 13 });
+  },
+  leave() {
+    const s = game.state;
+    const n = s.nodeData;
+    if (n.next.length > 1) { game.push('fork'); return; }
+    s.startLeg(0);
+    saveGame(s);
+    audio.sfx('engine');
+    game.go('travel');
+  },
+  lookAround() {
+    const s = game.state;
+    s.flags['look_' + s.node] = 1;
+    runResultFn((s) => {
+      s.addVibes(6);
+      s.healAll(2);
+      const who = s.randomPresent();
+      const lines = [
+        'You stretch your legs and take about 200 photos. Bela poses for none of them.',
+        'Everyone piles out to look. Even the cats peer out the windshield, deeply unimpressed but present.',
+        'You buy a magnet for the RV fridge. The fridge is now 40% magnets.',
+        'A stranger offers to take a family photo. Bela sneezes in it. It\'s perfect.',
+      ];
+      return { title: this.n.name, tone: 'good', who: who ? who.id : null, mood: 'happy', text: lines[Math.floor(Math.random() * lines.length)] };
+    }, () => this.build());
+  },
+  talk() {
+    const s = game.state;
+    const lines = TALK[s.node] || [{ who: 'a friendly local', text: 'Safe travels out there. Watch the weather on the passes and keep that tank full.' }];
+    const k = 'talk_' + s.node;
+    const i = (s.flags[k] || 0) % lines.length;
+    s.flags[k] = i + 1;
+    if (i === 0) s.addVibes(2);
+    const l = lines[i];
+    showResult({ title: 'You talk to ' + l.who, text: '"' + l.text.replace(/^"|"$/g, '') + '"' });
+  },
+  dump() {
+    const s = game.state;
+    runResultFn((s) => {
+      s.spend(15); s.tank = 0; s.addVibes(4);
+      return { title: 'Dump Station', tone: 'good', who: 'joe', mood: 'sick', text: 'Joe dons the sacred rubber gloves and performs the ritual of the stinky slinky. The tank is empty. Joe will never be the same.' };
+    }, () => this.build());
+  },
+  reviews() {
+    const s = game.state;
+    const canned = REVIEWS[s.node] || ['★★★★☆ "Nice place to stop. Clean-ish bathrooms." — Traveler'];
+    const mine = (getReviews()[s.node] || []).map((r) => r);
+    showResult({ title: 'Reviews: ' + this.n.name.split(',')[0], text: [...canned, ...mine].join('\n\n') });
+  },
+  update(dt) { this.t += dt; this.menu.update(dt); },
+  draw() {
+    const s = game.state;
+    drawScene(s.node, 0, 0, 480, 200, this.t);
+    gfx.alpha(0.35, () => gfx.rect(0, 0, 480, 300, '#000'));
+    const rows = Math.min(13, this.menu.items.length);
+    gfx.panel(14, 40, 280, rows * 16 + 44);
+    gfx.text(this.n.name, 154, 52, { size: 16, align: 'center', color: PAL.hi });
+    this.menu.draw();
+    // side status
+    gfx.panel(304, 40, 162, 150);
+    const lines = [
+      ['Date', s.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })],
+      ['Weather', s.weather[0].toUpperCase() + s.weather.slice(1)],
+      ['Cash', '$' + s.money],
+      ['Gas', Math.round(s.inv.gas) + ' gal'],
+      ['Food', Math.round(s.inv.food) + ' meals'],
+      ['RV', s.rv + '%'],
+      ['Vibes', s.vibesWord()],
+      ['To go', s.milesToGo() + ' mi'],
+    ];
+    lines.forEach(([k, v], i) => {
+      gfx.text(k, 316, 52 + i * 16, { size: 14, color: PAL.dim });
+      gfx.text(v, 456, 52 + i * 16, { size: 14, align: 'right' });
+    });
+    gfx.panel(304, 196, 162, 92);
+    gfx.text('THE CREW', 385, 205, { size: 8, head: true, align: 'center', color: PAL.hi });
+    s.members.forEach((m, i) => {
+      const x = 314 + i * 29, y = 222;
+      drawPortrait(m.id, x, y, m.gone ? 'neutral' : m.ailment || m.health < 40 ? 'sick' : m.health > 80 ? 'happy' : 'neutral', { size: 26, gone: m.gone });
+      if (!m.gone) bar(x, y + 30, 26, 5, m.health / 100);
+      gfx.text(MEMBER[m.id].name.slice(0, 5), x + 13, y + 38, { size: 12, align: 'center', color: PAL.dim });
+    });
+  },
+}));
+
+// Fork in the road.
+game.register('fork', () => ({
+  enter() {
+    const s = game.state;
+    this.n = s.nodeData;
+    this.t = 0;
+    this.menu = new Menu(this.n.next.map((l, i) => ({
+      label: l.label, onPick: () => {
+        s.startLeg(i);
+        s.log(`Chose ${l.label}.`);
+        saveGame(s);
+        audio.sfx('engine');
+        game.go('travel');
+      },
+    })).concat([{ label: 'Not yet', onPick: () => game.pop() }]), { x: 60, y: 150, w: 360, onBack: () => game.pop() });
+  },
+  update(dt) { this.t += dt; this.menu.update(dt); },
+  draw() {
+    gfx.alpha(0.6, () => gfx.rect(0, 0, 480, 300, '#000'));
+    gfx.panel(30, 30, 420, 240);
+    gfx.text('A FORK IN THE ROAD', 240, 44, { size: 10, head: true, align: 'center', color: PAL.hi });
+    gfx.wrap(this.n.fork, 380, 16).forEach((l, i) => gfx.text(l, 50, 66 + i * 18));
+    this.menu.draw();
+    const l = this.n.next[this.menu.sel];
+    if (l) {
+      gfx.rect(50, 212, 380, 1, PAL.edgeLo);
+      gfx.wrap(`${l.label}: ${l.miles} mi to ${NODES[l.to].name}. ${l.note}`, 370, 16).forEach((t, i) => gfx.text(t, 54, 220 + i * 18, { color: PAL.dim }));
+    }
+  },
+}));
