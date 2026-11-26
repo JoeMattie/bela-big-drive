@@ -84,7 +84,7 @@ game.register('ending', () => ({
       const n = this.sc.parts.length;
       if (this.shown >= n + 1) {
         gfx.rect(60, 74 + n * 17, 360, 1, PAL.edge);
-        gfx.text(`Subtotal ${this.sc.subtotal}  ×${this.sc.mult} (${s.diff.name})`, 60, 78 + n * 17, { size: 16, color: PAL.dim });
+        gfx.text(`Subtotal ${this.sc.subtotal}  ×${this.sc.mult} (${s.diffDef.name})`, 60, 78 + n * 17, { size: 16, color: PAL.dim });
       }
       if (this.shown >= n + 2) {
         gfx.text(`TOTAL: ${this.sc.total}`, 240, 100 + n * 17, { size: 14, head: true, align: 'center', color: PAL.hi });

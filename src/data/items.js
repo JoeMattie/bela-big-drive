@@ -42,11 +42,11 @@ export const DIFFICULTIES = [
     desc: 'New tires, new belts, oil changed. A suspicious amount of savings in the bank.',
   },
   {
-    id: 'cel', name: 'Check Engine Light', money: 2100, rv: 75, mult: 2,
+    id: 'cel', name: 'Check Engine Light', money: 2400, rv: 75, mult: 2,
     desc: 'The light has been on since 2019. It\'s probably fine. Less cash.',
   },
   {
-    id: 'ziptie', name: 'Held Together With Zip Ties', money: 1300, rv: 55, mult: 3,
+    id: 'ziptie', name: 'Held Together With Zip Ties', money: 1700, rv: 55, mult: 3,
     desc: 'The previous owner left a note that just says "good luck." Very little cash.',
   },
 ];

@@ -13,7 +13,7 @@ import { showResult, runResultFn } from './message.js';
 import { saveGame } from '../game/save.js';
 import { checkGameOver } from './common.js';
 
-const DAY_LEN = 3.4; // seconds per in-game day of driving
+const DAY_LEN = new URLSearchParams(location.search).has("fast") ? 0.4 : 3.4; // seconds per in-game day of driving
 
 export function pickEvent(s, cat) {
   const pool = [...EVENTS, ...(EVENTS_EXTRA || [])].filter((e) => (e.cat || 'general') === cat && (!e.once || !s.seen[e.id]) && (!e.when || e.when(s)));
@@ -43,6 +43,7 @@ game.register('travel', () => ({
   },
   startDay() {
     const s = game.state;
+    this.todStart = 1 - (s.dayLeft > 0 ? s.dayLeft : 1);
     this.fromDone = s.leg.done;
     this.res = s.driveDay();
     this.dayT = 0;
@@ -52,26 +53,25 @@ game.register('travel', () => ({
   endOfDay() {
     const s = game.state;
     const q = [];
-    for (const n of this.res.notes) {
-      if (n.outOfGas) q.push(() => this.outOfGas());
-    }
-    if (this.res.arrived) {
-      const notes = s.endDay();
-      this.pushNotes(q, notes);
-      q.push(() => this.arrive());
-    } else if (!this.res.notes.some((n) => n.outOfGas)) {
-      const notes = s.endDay();
-      this.pushNotes(q, notes);
-      // mechanical trouble?
-      if (chance(s.breakdownRisk())) {
+    const r = this.res;
+    const outOfGas = r.notes.some((n) => n.outOfGas);
+    if (outOfGas) q.push(() => this.outOfGas());
+    // something happens on the road (scaled by how much of the day we drove)
+    if (r.miles > 0) {
+      const k = Math.min(1, r.frac * 1.15);
+      if (chance(s.breakdownRisk() * k)) {
         const e = pickEvent(s, 'rv');
         if (e) q.push((done) => { s.seen[e.id] = 1; s.stats.breakdowns++; runResultFn((st) => e.run(st), done); });
-      } else if (chance(s.eventChance())) {
+      } else if (chance(s.eventChance() * k)) {
         const e = pickEvent(s, 'general');
         if (e) q.push((done) => { s.seen[e.id] = 1; s.stats.events++; runResultFn((st) => e.run(st), done); });
       }
-      if (s.rv <= 0) q.push((done) => this.totalled(done));
     }
+    if (r.dayOver && !outOfGas) {
+      q.push((done) => { const notes = s.endDay(); const sub = []; this.pushNotes(sub, notes); this.queue.unshift(...sub); done(); });
+    }
+    q.push((done) => { if (s.rv <= 0) this.totalled(done); else done(); });
+    if (r.arrived) q.push(() => this.arrive());
     this.queue = q;
     this.runQueue();
   },
@@ -150,16 +150,17 @@ game.register('travel', () => ({
     }
     this.dayT += dt;
     this.scroll += dt * 90 * this.speed;
-    const f = Math.min(1, this.dayT / DAY_LEN);
+    const len = DAY_LEN * Math.max(0.25, this.res.frac || 1);
+    const f = Math.min(1, this.dayT / len);
     this.shownDone = this.fromDone + (s.leg.done - this.fromDone) * f;
-    if (this.dayT >= DAY_LEN) {
+    if (this.dayT >= len) {
       this.busy = true;
       this.endOfDay();
     }
   },
   draw() {
     const s = game.state;
-    const tod = this.busy ? 0.92 : Math.min(0.97, 0.05 + (this.dayT / DAY_LEN) * 0.92);
+    const tod = Math.min(0.97, 0.05 + (this.todStart + (1 - (game.state.dayLeft ?? 0) - this.todStart) * Math.min(1, this.dayT / (DAY_LEN * Math.max(0.25, this.res.frac || 1)))) * 0.92);
     const biome = s.biome();
     const roadY = drawTravelView(biome, this.scroll, tod, s.weather, this.t, 190);
     drawRV(176, roadY - 46, this.t, { moving: !this.busy && this.speed > 0, hazard: s.rv < 30 });

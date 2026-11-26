@@ -14,7 +14,7 @@ export const SNACKS = {
   gas: { name: 'Gas Station Snacks', mult: 0.65, desc: 'Jerky, cheese crackers, mystery burritos. Cheap but grim.' },
 };
 export const SLEEPS = {
-  rvpark: { name: 'RV Park', cost: 65, desc: 'Full hookups: dumps the tank, refills water, hot showers. $65/night.' },
+  rvpark: { name: 'RV Park', cost: 49, desc: 'Full hookups: dumps the tank, refills water, hot showers. $49/night.' },
   walmart: { name: 'Big-Box Parking Lot', cost: 0, desc: 'Free! Sodium lights, idling semis, the occasional knock.' },
   boondock: { name: 'Boondocking', cost: 0, desc: 'Free & gorgeous. No hookups, uses propane, rangers may move you along.' },
 };
@@ -56,6 +56,7 @@ export class GameState {
     this.month = month;
     this.date = new Date(2026, month, 1, 9);
     this.day = 0;
+    this.dayLeft = 1;
     this.node = START;
     this.leg = null;           // {from, to, miles, done}
     this.milesTotal = 0;
@@ -72,7 +73,7 @@ export class GameState {
   }
 
   // ---------- queries ----------
-  get diff() { return DIFFICULTIES.find((x) => x.id === this.difficulty); }
+  get diffDef() { return DIFFICULTIES.find((x) => x.id === this.difficulty); }
   get nodeData() { return NODES[this.node]; }
   member(id) { return this.members.find((m) => m.id === id); }
   alive(id) { const m = this.member(id); return !!m && !m.gone; }
@@ -140,7 +141,7 @@ export class GameState {
     this.inv[item] = Math.max(0, Math.min(max, Math.round((this.inv[item] + n) * 10) / 10));
   }
   has(item, n = 1) { return this.inv[item] >= n; }
-  spend(n) { this.money = Math.round(this.money - n); }
+  spend(n) { this.money = Math.max(0, Math.round(this.money - n)); }
   earn(n) { this.money = Math.round(this.money + n); }
   addVibes(n) { this.vibes = Math.max(0, Math.min(100, Math.round(this.vibes + n))); }
   damageRV(n) { this.rv = Math.max(0, Math.min(100, Math.round(this.rv - n))); }
@@ -265,7 +266,11 @@ export class GameState {
   // Simulate one day of driving. Returns {miles, arrived, notes:[...]}
   driveDay() {
     const notes = [];
-    let miles = Math.min(this.milesPerDay(), this.leg.miles - this.leg.done);
+    if (!(this.dayLeft > 0)) this.dayLeft = 1;
+    const mpd = this.milesPerDay();
+    const startLeft = this.dayLeft;
+    let miles = Math.min(Math.round(mpd * this.dayLeft), this.leg.miles - this.leg.done);
+    this.dayLeft = Math.max(0, this.dayLeft - miles / mpd);
     const need = miles / this.mpg();
     if (this.inv.gas < need) {
       miles = Math.floor(this.inv.gas * this.mpg());
@@ -279,7 +284,9 @@ export class GameState {
     this.damageRV(wear);
     if (this.inv.gas <= 0) notes.push({ text: 'The V10 coughs, sputters, and dies. You are OUT OF GAS.', bad: true, outOfGas: true });
     const arrived = this.leg.done >= this.leg.miles;
-    return { miles, arrived, notes };
+    // arriving early in the day leaves time to keep driving after the stop
+    const dayOver = !arrived || this.dayLeft < 0.25 || this.inv.gas <= 0;
+    return { miles, arrived, notes, dayOver, frac: Math.max(0.15, startLeft - this.dayLeft) };
   }
 
   // End-of-day upkeep: food, health, vibes, overnight. Returns notes [{text,bad}]
@@ -322,7 +329,7 @@ export class GameState {
         this.spend(sleep.cost);
         this.tank = 0;
         this.add('water', 80);
-        sleepBonus = 3;
+        sleepBonus = 2;
         this.addVibes(3);
       } else {
         notes.push({ text: 'Not enough cash for an RV park. You sleep in a parking lot.', bad: true });
@@ -337,7 +344,7 @@ export class GameState {
     // --- health ---
     for (const m of this.present()) {
       const sp = MEMBER[m.id].species;
-      let d = 2 + sleepBonus;
+      let d = 0 + sleepBonus;
       if (sp === 'human') {
         d += this.snacks === 'gourmet' ? 3 : this.snacks === 'gas' ? -3 : 1;
         if (hungry) d -= 12;
@@ -397,19 +404,21 @@ export class GameState {
       }
     }
 
+    this.dayLeft = 1;
     this.advanceDate();
     return notes;
   }
 
   // Chance of a random event today.
   eventChance() {
-    let p = 0.42;
-    if (this.pace === 'floorit') p += 0.08;
+    let p = 0.72;
+    if (this.pace === 'floorit') p += 0.1;
+    if (this.pace === 'mosey') p -= 0.1;
     return p;
   }
 
   breakdownRisk() {
-    let p = 0.02 + ((100 - this.rv) / 100) * 0.09;
+    let p = 0.04 + ((100 - this.rv) / 100) * 0.12;
     if (this.pace === 'floorit') p += 0.04;
     if (this.inv.coffee > 0) p -= 0.01;
     return Math.max(0.01, p);
@@ -434,7 +443,7 @@ export class GameState {
     for (const it of ITEMS) sp += Math.round((this.inv[it.id] / it.step) * 2);
     parts.push({ label: 'Leftover supplies', pts: sp }); pts += sp;
     const days = Math.max(0, 400 - this.day * 25); parts.push({ label: `Speed bonus (${this.day} days)`, pts: days }); pts += days;
-    const mult = this.diff.mult;
+    const mult = this.diffDef.mult;
     return { parts, subtotal: pts, mult, total: pts * mult };
   }
 
