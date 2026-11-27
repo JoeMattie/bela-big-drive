@@ -12,9 +12,9 @@ export function isPortrait() { return H > W * 1.1; }
 // Shared responsive metrics
 export const ui = {
   get portrait() { return isPortrait(); },
-  get fs() { return isPortrait() ? 20 : 16; },      // body font size
-  get lh() { return isPortrait() ? 25 : 19; },      // body line height
-  get mlh() { return isPortrait() ? 34 : 19; },     // menu row height (tap targets)
+  get fs() { return isPortrait() ? 22 : 16; },      // body font size
+  get lh() { return isPortrait() ? 27 : 19; },      // body line height
+  get mlh() { return isPortrait() ? 40 : 19; },     // menu row height (tap targets)
   get artX() { return Math.round((W - 480) / 2); }, // where 480-wide art sits
 };
 
