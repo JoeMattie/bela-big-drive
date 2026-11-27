@@ -12,7 +12,7 @@ import './scenes/index.js';
 function manifest() {
   const k = [];
   for (const id of Object.keys(NODES)) k.push('scenes/' + id);
-  for (const s of ['title', 'ending', 'gameover', 'campsite_night', 'walmart_night', 'breakdown']) k.push('scenes/' + s);
+  for (const s of ['title', 'title_portrait', 'ending', 'gameover', 'campsite_night', 'walmart_night', 'breakdown']) k.push('scenes/' + s);
   for (const p of PARTY) for (const m of ['neutral', 'happy', 'sick']) k.push(`portraits/${p.id}_${m}`);
   for (const s of ['rv_side', 'rv_side_broken', 'rv_wheel', 'rv_top', 'joe_walk', 'caity_walk', 'bela_walk', 'muskrat_walk', 'pookah_walk', 'bela_run_side']) k.push('sprites/' + s);
   for (const b of ['coast', 'city', 'pass', 'valley', 'forest', 'oregon', 'oregon_coast', 'portland']) { k.push(`biomes/${b}_far`); k.push(`biomes/${b}_near`); }

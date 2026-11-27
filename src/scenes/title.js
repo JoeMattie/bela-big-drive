@@ -37,7 +37,17 @@ game.register('title', () => ({
     const n = this.menu.items.length;
     this.menu.size = P ? 22 : 16;
     this.menu.lh = P ? 38 : 17;
-    if (P) {
+    if (P && assets.get('scenes/title_portrait')) {
+      // dedicated tall art: logo in its sky, menu over its calm foreground
+      const menuH = n * this.menu.lh + 30;
+      this.tallY = Math.round((H - 960) / 2);
+      this.artY = this.tallY;
+      this.menu.x = 50; this.menu.w = 380;
+      const py = H - menuH - 56;
+      this.menu.y = py + 16;
+      this.panel = [24, py, 432, menuH];
+    } else if (P) {
+      this.tallY = null;
       const menuH = n * this.menu.lh + 30;
       this.artY = Math.max(0, Math.round((H - 300 - menuH - 40) / 2));
       this.menu.x = 50; this.menu.w = 380;
@@ -57,15 +67,17 @@ game.register('title', () => ({
     const t = this.t;
     const P = ui.portrait;
     const ax = Math.round((W - 480) / 2), ay = this.artY;
+    const tall = P && this.tallY != null ? assets.get('scenes/title_portrait') : null;
     const img = assets.get('scenes/title');
-    if (img) drawFull(img, ax, ay);
+    if (tall) drawFull(tall, 0, this.tallY);
+    else if (img) drawFull(img, ax, ay);
     else {
       drawTravelView('coast', t * 60, 0.72, 'sunny', t, H);
       drawRV(W / 2, H * 0.7, t, { moving: true });
     }
     // logo
     const bob = Math.sin(t * 2) * 2;
-    const ly = P ? Math.max(18, ay - 70) : 18;
+    const ly = tall ? Math.max(24, this.tallY + 70) : P ? Math.max(18, ay - 70) : 18;
     gfx.text("BELA'S", W / 2, ly + bob, { size: 18, head: true, align: 'center', color: PAL.hi, shadowColor: '#5a2a0a' });
     gfx.text('BIG DRIVE', W / 2, ly + 24 + bob, { size: 30, head: true, align: 'center', color: '#ffffff', shadowColor: '#a8456e' });
     if (P) {
@@ -77,7 +89,7 @@ game.register('title', () => ({
     // bela trotting
     const run = assets.get('sprites/bela_run_side');
     const bx = ((t * 70) % (W + 80)) - 40;
-    if (run) gfx.frame(run, 32, 24, Math.floor(t * 10) % 4, 0, bx, ay + 168);
+    if (run && !tall) gfx.frame(run, 32, 24, Math.floor(t * 10) % 4, 0, bx, ay + 168);
     const [px, py, pw, ph] = this.panel;
     gfx.panel(px, py, pw, ph, { body: 'rgba(30,20,45,0.92)' });
     this.menu.draw();
