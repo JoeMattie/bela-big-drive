@@ -192,7 +192,7 @@ game.register('rest', () => ({
 }));
 
 // Brief overnight interstitial between driving days (tap to skip).
-const NIGHT_LEN = new URLSearchParams(location.search).has('fast') ? 0.6 : 4.2;
+const FAST_NIGHT = new URLSearchParams(location.search).has('fast');
 const NIGHT_LINES = {
   rvpark: ['Hookups! Hot showers! A neighbor\'s wind chimes!', 'The park host waves a golf cart at you.', 'Full hookups. The black tank is empty. Joy.'],
   walmart: ['Sodium lights hum. A semi idles all night.', 'Free parking and a midnight snack run.', 'Bela watches the cart corral like a hawk.'],
@@ -207,10 +207,10 @@ game.register('night', () => ({
   },
   update(dt) {
     this.t += dt;
-    if (this.t > NIGHT_LEN || (this.t > 0.3 && input.anyKey())) { game.pop(); if (this.onDone) this.onDone(); }
+    if ((FAST_NIGHT && this.t > 0.6) || (this.t > 0.4 && input.anyKey())) { game.pop(); if (this.onDone) this.onDone(); }
   },
   draw() {
-    const a = Math.min(1, this.t * 3, (NIGHT_LEN - this.t) * 3);
+    const a = Math.min(1, this.t * 3);
     gfx.alpha(Math.max(0, a), () => {
       gfx.rect(0, 0, W, H, '#000');
       const ay = Math.round((H - 260) / 2);
@@ -219,5 +219,6 @@ game.register('night', () => ({
       gfx.text(this.where, W / 2, ay + 236, { size: ui.fs, align: 'center', color: PAL.dim });
       gfx.text(this.line, W / 2, ay + 258, { size: ui.fs, align: 'center' });
     });
+    if (this.t > 0.4) continueHint(this.t, W / 2, Math.min(H - 20, Math.round((H - 260) / 2) + 290));
   },
 }));

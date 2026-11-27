@@ -156,6 +156,18 @@ game.register('travel', () => ({
     this.wx.update(dt, s.weather);
     this.life.update(dt, !this.busy && !this.arriving && this.speed > 0, s, this.shownDone);
     if (this.busy || this.arriving) return;
+    // finished this stretch: wait for the player before moving on
+    if (this.waiting) {
+      this.waitT += dt;
+      if ((FAST && this.waitT > 0.2) || (this.waitT > 0.25 && input.anyKey())) {
+        input.consumeKeys(); input.consumeClicks();
+        this.waiting = false;
+        this.busy = true;
+        audio.sfx('confirm');
+        this.endOfDay();
+      }
+      return;
+    }
     // open the situation menu
     if (input.anyKey()) {
       input.consumeKeys(); input.consumeClicks();
@@ -168,8 +180,10 @@ game.register('travel', () => ({
     const f = Math.min(1, this.dayT / len);
     this.shownDone = this.fromDone + (s.leg.done - this.fromDone) * f;
     if (this.dayT >= len) {
-      this.busy = true;
-      this.endOfDay();
+      this.shownDone = s.leg.done;
+      this.waiting = true;
+      this.waitT = 0;
+      this.speed = 0; // pull over while the countdown waits for a tap
     }
   },
   viewH() { return ui.portrait ? Math.min(420, Math.max(220, Math.round(H * 0.4))) : 190; },
@@ -204,7 +218,14 @@ game.register('travel', () => ({
       pace: { mosey: 'Moseying', cruise: 'Cruising', floorit: 'Floor It!' }[s.pace],
     };
   },
+  waitMsg() {
+    const s = game.state;
+    if (this.res.arrived) return `Arriving at ${NODES[s.leg.to].name.split(',')[0]}`;
+    if (this.res.dayOver) return `Day's drive: ${this.res.miles} mi`;
+    return `${this.res.miles} mi down the road`;
+  },
   hint() {
+    if (this.waiting) return this.waitMsg() + (input.lastPointerType === 'mouse' ? ' — press ENTER' : ' — tap to continue');
     return input.lastPointerType === 'mouse' ? 'Press ENTER to size up the situation' : (input.lastPointerType === 'touch' ? 'Tap to stop & size up the situation' : 'Press ENTER to size up the situation');
   },
   drawPanel(s) {
@@ -229,7 +250,13 @@ game.register('travel', () => ({
       drawPortrait(m.id, x, y, m.gone ? 'neutral' : m.ailment || m.health < 40 ? 'sick' : 'neutral', { size: 16, gone: m.gone });
       if (!m.gone) bar(x + 18, y + 6, 20, 5, m.health / 100);
     });
-    if (!this.busy && Math.floor(this.t * 1.5) % 2 === 0) gfx.text(this.hint(), W / 2, 174, { size: 14, align: 'center', color: '#fff', shadowColor: '#000' });
+    if (this.waiting) {
+      const msg = this.hint();
+      const w = gfx.measure(msg, 16) + 24;
+      gfx.alpha(0.85, () => gfx.rect(W / 2 - w / 2, 150, w, 24, '#1b1424'));
+      gfx.strokeRect(W / 2 - w / 2, 150, w, 24, PAL.edge);
+      gfx.text(msg, W / 2, 154, { size: 16, align: 'center', color: Math.floor(this.t * 2) % 2 ? PAL.hi : '#fff' });
+    } else if (!this.busy && Math.floor(this.t * 1.5) % 2 === 0) gfx.text(this.hint(), W / 2, 174, { size: 14, align: 'center', color: '#fff', shadowColor: '#000' });
   },
   drawPanelPortrait(s, vh) {
     const st = this.stats(s);
@@ -265,9 +292,17 @@ game.register('travel', () => ({
     // big stop button
     const by = Math.max(y, H - 70), bh = 48;
     if (by + bh < H - 6) {
-      gfx.rect(24, by, W - 48, bh, this.busy ? '#3d2b52' : '#5a3a20');
-      gfx.strokeRect(24, by, W - 48, bh, PAL.edge);
-      gfx.text(this.busy ? '…' : 'STOP & SIZE UP THE SITUATION', W / 2, by + 18, { size: 10, head: true, align: 'center', color: PAL.hi });
+      gfx.rect(24, by, W - 48, bh, this.busy ? '#3d2b52' : this.waiting ? '#2a6a3a' : '#5a3a20');
+      gfx.strokeRect(24, by, W - 48, bh, this.waiting ? PAL.good : PAL.edge);
+      gfx.text(this.busy ? '…' : this.waiting ? 'TAP TO CONTINUE ▸' : 'STOP & SIZE UP THE SITUATION', W / 2, by + 18, { size: 10, head: true, align: 'center', color: PAL.hi });
+    }
+    if (this.waiting) {
+      const msg = this.waitMsg();
+      const ty = vh - 44;
+      const w = gfx.measure(msg, 22) + 28;
+      gfx.alpha(0.85, () => gfx.rect(W / 2 - w / 2, ty, w, 30, '#1b1424'));
+      gfx.strokeRect(W / 2 - w / 2, ty, w, 30, PAL.edge);
+      gfx.text(msg, W / 2, ty + 4, { size: 22, align: 'center', color: PAL.hi });
     }
   },
 }));
