@@ -56,9 +56,9 @@ game.register('title', () => ({
     } else {
       this.artY = 0;
       const ax = Math.round((W - 480) / 2);
-      this.menu.x = ax + 30; this.menu.w = 200;
+      this.menu.x = ax + 480 - 218; this.menu.w = 200;
       this.menu.y = 206;
-      this.panel = [ax + 10, 196, 228, n * 17 + 18];
+      this.panel = [ax + 480 - 238, 196, 228, n * 17 + 18];
     }
     this.lw = W; this.lhH = H;
   },
@@ -93,6 +93,6 @@ game.register('title', () => ({
     const [px, py, pw, ph] = this.panel;
     gfx.panel(px, py, pw, ph, { body: 'rgba(30,20,45,0.92)' });
     this.menu.draw();
-    gfx.text('made with love for C, J, B, M & P', P ? W / 2 : W - 10, H - (P ? 26 : 12), { size: P ? 14 : 12, align: P ? 'center' : 'right', color: '#e8dcc0' });
+    gfx.text('made with love for C, J, B, M & P', P ? W / 2 : 10, H - (P ? 26 : 12), { size: P ? 14 : 12, align: P ? 'center' : 'left', color: '#e8dcc0' });
   },
 }));
