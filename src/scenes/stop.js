@@ -6,11 +6,12 @@ import { drawScene, drawArt, drawFull } from '../engine/art.js';
 import { assets } from '../engine/assets.js';
 
 // Where the 480x200 location art sits: top on landscape, a bit lower on tall portrait screens.
-export function artY() { return ui.portrait ? Math.round(Math.max(0, Math.min(140, (H - 200 - 520) / 2))) : 0; }
+export function artY() { return 0; } // art sits flush at the top on every screen shape
 export function drawLocationArt(id, t) {
   const img = assets.get('scenes/' + id);
   const y = artY();
-  if (img) drawFull(img, Math.round((W - 480) / 2), y);
+  gfx.rect(0, 0, W, H, PAL.ink); // plain dark below the art (no stretched/blurred art)
+  if (img) drawFull(img, Math.round((W - 480) / 2), y, { extendY: false });
   else drawArt(id, y, t);
   return y;
 }

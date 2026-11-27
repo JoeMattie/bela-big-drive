@@ -276,14 +276,13 @@ export function drawFull(img, x, y, opts = {}) {
   }
   if (opts.extendY !== false) {
     if (y > 0) {
-      // soft continuation of the sky: blurred top band of the art, faded to its top color
-      c.save();
-      c.imageSmoothingEnabled = true;
-      c.drawImage(img, 0, 0, w, 1, 0, 0, W, y + 1);
-      try { c.filter = 'blur(12px) saturate(1.1)'; } catch (_) { /* ignore */ }
-      c.drawImage(img, 0, 0, w, Math.min(40, h), -30, y - Math.min(y, 160) - 10, W + 60, Math.min(y, 160) + 30);
-      c.restore();
-      c.imageSmoothingEnabled = false;
+      // continue the sky with a clean banded gradient of the art's dominant top
+      // color (median ignores a peak/cloud touching the edge), darkening upward
+      const top = topColor(img);
+      const bands = [];
+      const n = Math.max(8, Math.min(40, Math.round(y / 4)));
+      for (let i = 0; i < n; i++) bands.push(gfx.mix('#1b1424', top, 0.55 + (i / (n - 1)) * 0.45));
+      gfx.bands(0, 0, W, y + 1, bands);
     }
     if (y + h < H) {
       const bh = H - (y + h);
@@ -297,4 +296,24 @@ export function drawFull(img, x, y, opts = {}) {
     }
   }
   c.drawImage(img, Math.round(x), Math.round(y));
+}
+
+// Median color of an image's top rows, cached per image.
+const _topCache = new WeakMap();
+function topColor(img) {
+  if (_topCache.has(img)) return _topCache.get(img);
+  let col = '#3a86d8';
+  try {
+    const cv = document.createElement('canvas');
+    cv.width = img.width; cv.height = 4;
+    const cx = cv.getContext('2d');
+    cx.drawImage(img, 0, 0, img.width, 4, 0, 0, img.width, 4);
+    const d = cx.getImageData(0, 0, img.width, 4).data;
+    const r = [], g = [], b = [];
+    for (let i = 0; i < d.length; i += 4) { r.push(d[i]); g.push(d[i + 1]); b.push(d[i + 2]); }
+    const med = (a) => a.sort((p, q) => p - q)[a.length >> 1];
+    col = '#' + [med(r), med(g), med(b)].map((v) => v.toString(16).padStart(2, '0')).join('');
+  } catch (_) { /* ignore */ }
+  _topCache.set(img, col);
+  return col;
 }
