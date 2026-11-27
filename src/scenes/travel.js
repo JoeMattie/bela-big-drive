@@ -14,7 +14,10 @@ import { saveGame } from '../game/save.js';
 import { checkGameOver } from './common.js';
 import { RoadLife } from '../engine/roadlife.js';
 
-const DAY_LEN = new URLSearchParams(location.search).has("fast") ? 0.4 : 3.4; // seconds per in-game day of driving
+const FAST = new URLSearchParams(location.search).has('fast');
+const DAY_LEN = FAST ? 0.4 : 4.2;  // seconds per full in-game day of driving
+const MIN_SEG = FAST ? 0.3 : 2.6;  // short hops still get time to read the countdown
+const segLen = (frac) => Math.max(MIN_SEG, DAY_LEN * (frac || 1));
 
 export function pickEvent(s, cat) {
   const pool = [...EVENTS, ...(EVENTS_EXTRA || [])].filter((e) => (e.cat || 'general') === cat && (!e.once || !s.seen[e.id]) && (!e.when || e.when(s)));
@@ -161,7 +164,7 @@ game.register('travel', () => ({
     }
     if (!window.BBD_FREEZE) this.dayT += dt;
     this.scroll += dt * 90 * this.speed;
-    const len = DAY_LEN * Math.max(0.25, this.res.frac || 1);
+    const len = segLen(this.res.frac);
     const f = Math.min(1, this.dayT / len);
     this.shownDone = this.fromDone + (s.leg.done - this.fromDone) * f;
     if (this.dayT >= len) {
@@ -172,7 +175,7 @@ game.register('travel', () => ({
   viewH() { return ui.portrait ? Math.min(420, Math.max(220, Math.round(H * 0.4))) : 190; },
   draw() {
     const s = game.state;
-    const tod = Math.min(0.97, 0.05 + (this.todStart + (1 - (game.state.dayLeft ?? 0) - this.todStart) * Math.min(1, this.dayT / (DAY_LEN * Math.max(0.25, this.res.frac || 1)))) * 0.92);
+    const tod = Math.min(0.97, 0.05 + (this.todStart + (1 - (game.state.dayLeft ?? 0) - this.todStart) * Math.min(1, this.dayT / segLen(this.res.frac))) * 0.92);
     const biome = s.biome();
     const vh = this.viewH();
     const roadY = drawTravelView(biome, this.scroll, tod, s.weather, this.t, vh);

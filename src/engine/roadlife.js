@@ -73,7 +73,7 @@ export class RoadLife {
         const choices = src.filter((p) => !recent.includes(p[1]));
         const pick = (choices.length ? choices : src)[Math.floor(Math.random() * (choices.length || src.length))];
         if (pick) {
-          this.bubble = { id: pick[0], text: pick[1], t: 3.2 };
+          this.bubble = { id: pick[0], text: pick[1], t: 4.2 };
           this.recent = [...recent, pick[1]].slice(-12);
         }
       }
@@ -145,7 +145,7 @@ export class RoadLife {
   drawBubble(rvX, rvY) {
     const b = this.bubble;
     if (!b) return;
-    const a = Math.min(1, b.t * 3, (3.2 - b.t) * 6);
+    const a = Math.min(1, b.t * 3, (4.2 - b.t) * 6);
     const txt = b.text;
     const w = Math.min(230, gfx.measure(txt, 14) + 30);
     const lines = gfx.wrap(txt, w - 28, 14);
