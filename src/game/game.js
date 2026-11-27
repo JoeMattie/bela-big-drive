@@ -1,10 +1,13 @@
 // Scene manager. A scene is an object with optional enter(params), update(dt),
 // draw(), exit(). Overlays (push) draw on top of the scene below them.
-import { gfx } from '../engine/gfx.js';
+import { gfx, W, H, STAGE_W, STAGE_H, PAL } from '../engine/gfx.js';
 import { input } from '../engine/input.js';
 import { GameState } from './state.js';
 
 const registry = {};
+// Scenes that keep a fixed 480x300 playfield, centered on any screen shape.
+const FIXED = new Set(['forage', 'freeway', 'catchase', 'casino', 'map', 'supplies', 'ending', 'gameover', 'halloffame', 'learn', 'departure']);
+const stageOrigin = () => ({ x: Math.round((W - STAGE_W) / 2), y: Math.round((H - STAGE_H) / 2) });
 
 export const game = {
   state: new GameState(),
@@ -18,6 +21,7 @@ export const game = {
     if (!f) throw new Error('Unknown scene ' + name);
     const s = f();
     s.name = name;
+    if (FIXED.has(name)) s.fixed = true;
     if (s.enter) s.enter(params || {});
     return s;
   },
@@ -49,7 +53,14 @@ export const game = {
   update(dt) {
     this.t += dt;
     const top = this.top();
-    if (top && top.update) top.update(dt);
+    if (top && top.fixed) {
+      // translate pointer coordinates into the centered stage
+      const o = stageOrigin();
+      input.mouse.x -= o.x; input.mouse.y -= o.y;
+      for (const c of input.clicks) { c.x -= o.x; c.y -= o.y; }
+      if (top.update) top.update(dt);
+      input.mouse.x += o.x; input.mouse.y += o.y;
+    } else if (top && top.update) top.update(dt);
     for (const s of this.stack) if (s !== top && s.bgUpdate) s.bgUpdate(dt);
   },
   draw() {
@@ -58,10 +69,24 @@ export const game = {
     while (start > 0 && this.stack[start].overlay) start--;
     for (let i = start; i < this.stack.length; i++) {
       const s = this.stack[i];
-      if (s.draw) s.draw();
+      if (!s.draw) continue;
+      if (s.fixed) {
+        const o = stageOrigin();
+        if (o.x || o.y) {
+          if (s.backdrop) s.backdrop(o);
+          else gfx.alpha(i === start ? 1 : 0.92, () => gfx.rect(0, 0, W, H, '#120d1a'));
+        }
+        const c = gfx.ctx;
+        c.save();
+        c.translate(o.x, o.y);
+        c.beginPath(); c.rect(0, 0, STAGE_W, STAGE_H); c.clip();
+        s.draw();
+        c.restore();
+        if ((o.x || o.y) && !s.backdrop) gfx.strokeRect(o.x - 1, o.y - 1, STAGE_W + 2, STAGE_H + 2, PAL.edgeLo);
+      } else s.draw();
     }
     if (this.fade > 0) {
-      gfx.alpha(this.fade, () => gfx.rect(0, 0, 480, 300, '#000'));
+      gfx.alpha(this.fade, () => gfx.rect(0, 0, W, H, '#000'));
     }
   },
   tickFade(dt) { if (this.fade > 0) this.fade = Math.max(0, this.fade - dt * 4); },

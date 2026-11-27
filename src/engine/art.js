@@ -1,6 +1,6 @@
 // Procedural art: skies, parallax travel view, weather, fallbacks for any
 // missing pixel-art assets.
-import { gfx, PAL } from './gfx.js';
+import { gfx, PAL, W, H } from './gfx.js';
 import { assets } from './assets.js';
 
 // ---------- Sky ----------
@@ -107,24 +107,24 @@ function ridge(x0, yBase, w, amp, freq, seed, col, offset) {
 function tile(img, scroll, y) {
   const w = img.width;
   let x = -(((scroll % w) + w) % w);
-  for (; x < 480; x += w) gfx.image(img, x, y);
+  for (; x < W; x += w) gfx.image(img, x, y);
 }
 
 // The travel view (y from 0..viewH). scroll in px.
 export function drawTravelView(biome, scroll, tod, weather, t, viewH = 190) {
-  drawSky(0, 0, 480, viewH, tod, weather, t);
+  drawSky(0, 0, W, viewH, tod, weather, t);
   const C = BIOME_COLORS[biome] || BIOME_COLORS.coast;
   const night = tod > 0.88 ? 0.55 : tod > 0.75 ? (tod - 0.75) / 0.13 * 0.4 : 0;
   const roadY = viewH - 34;
   const far = assets.get(`biomes/${biome}_far`);
   const near = assets.get(`biomes/${biome}_near`);
   if (far) tile(far, scroll * 0.15, roadY - 22 - far.height + 18);
-  else ridge(0, roadY - 30, 480, 60, 0.012, biome.length * 50, C.far, scroll * 0.15);
+  else ridge(0, roadY - 30, W, 60, 0.012, biome.length * 50, C.far, scroll * 0.15);
   if (!near) {
-    ridge(0, roadY - 8, 480, 30, 0.03, biome.length * 20, C.mid, scroll * 0.4);
+    ridge(0, roadY - 8, W, 30, 0.03, biome.length * 20, C.mid, scroll * 0.4);
   }
   // ground band
-  gfx.rect(0, roadY - 10, 480, 10, C.ground);
+  gfx.rect(0, roadY - 10, W, 10, C.ground);
   if (near) tile(near, scroll * 0.7, roadY - near.height + 2);
   else {
     // procedural roadside: poles + bushes
@@ -135,16 +135,16 @@ export function drawTravelView(biome, scroll, tod, weather, t, viewH = 190) {
     }
   }
   drawRoad(roadY, scroll, viewH);
-  if (night > 0) gfx.alpha(night, () => gfx.rect(0, 0, 480, viewH, '#0a0820'));
+  if (night > 0) gfx.alpha(night, () => gfx.rect(0, 0, W, viewH, '#0a0820'));
   return roadY;
 }
 
 export function drawRoad(roadY, scroll, viewH) {
-  gfx.rect(0, roadY, 480, viewH - roadY, PAL.road);
-  gfx.rect(0, roadY, 480, 2, '#77736a');
-  gfx.rect(0, viewH - 3, 480, 3, '#55524a');
+  gfx.rect(0, roadY, W, viewH - roadY, PAL.road);
+  gfx.rect(0, roadY, W, 2, '#77736a');
+  gfx.rect(0, viewH - 3, W, 3, '#55524a');
   const mid = roadY + Math.floor((viewH - roadY) / 2);
-  for (let x = -((scroll * 1.0) % 40); x < 480; x += 40) gfx.rect(x, mid, 20, 2, '#e8d070');
+  for (let x = -((scroll * 1.0) % 40); x < W; x += 40) gfx.rect(x, mid, 20, 2, '#e8d070');
 }
 
 // ---------- RV ----------
@@ -214,13 +214,13 @@ export class Weather {
   update(dt, kind, wind = 1) {
     const rate = { rain: 220, storm: 400, snow: 80, smoke: 25, fog: 0 }[kind] || 0;
     const n = rate * dt;
-    for (let i = 0; i < n; i++) this.p.push({ x: Math.random() * 520 - 20, y: -5, v: kind === 'snow' ? 30 + Math.random() * 30 : 280 + Math.random() * 80, k: kind, life: 0 });
+    for (let i = 0; i < n; i++) this.p.push({ x: Math.random() * (W + 40) - 20, y: -5, v: kind === 'snow' ? 30 + Math.random() * 30 : 280 + Math.random() * 80, k: kind, life: 0 });
     for (const q of this.p) {
       q.y += q.v * dt;
       q.x -= (q.k === 'snow' ? 20 + Math.sin(q.y / 10) * 15 : 60 * wind) * dt;
       q.life += dt;
     }
-    this.p = this.p.filter((q) => q.y < 200 && q.life < 6);
+    this.p = this.p.filter((q) => q.y < 640 && q.life < 8);
     if (kind === 'storm' && Math.random() < dt * 0.15) this.flash = 0.25;
     this.flash = Math.max(0, this.flash - dt);
   }
@@ -231,9 +231,9 @@ export class Weather {
       else if (q.k === 'smoke') gfx.alpha(0.3, () => gfx.rect(q.x, q.y, 3, 3, '#5a4030'));
       else gfx.alpha(0.6, () => gfx.rect(q.x, q.y, 1, 5, '#b8d4ff'));
     }
-    if (kind === 'fog') gfx.alpha(0.45, () => gfx.rect(0, 40, 480, h - 40, '#dde4ea'));
-    if (kind === 'smoke') gfx.alpha(0.25, () => gfx.rect(0, 0, 480, h, '#c07030'));
-    if (this.flash > 0) gfx.alpha(this.flash * 2, () => gfx.rect(0, 0, 480, h, '#ffffff'));
+    if (kind === 'fog') gfx.alpha(0.45, () => gfx.rect(0, 40, W, h - 40, '#dde4ea'));
+    if (kind === 'smoke') gfx.alpha(0.25, () => gfx.rect(0, 0, W, h, '#c07030'));
+    if (this.flash > 0) gfx.alpha(this.flash * 2, () => gfx.rect(0, 0, W, h, '#ffffff'));
   }
 }
 
@@ -247,4 +247,45 @@ export function drawScene(id, x = 0, y = 0, w = 480, h = 200, t = 0) {
   ridge(x, y + h * 0.85, w, h * 0.2, 0.04, id.length * 17, '#2f4a3a', 0);
   gfx.rect(x, y + h * 0.85, w, h * 0.15, '#3a3a2a');
   return false;
+}
+
+// Full-width art band: the 480x200 art at native scale, centered; any extra
+// width on wide screens is filled with a softened copy of the art.
+export function drawArt(id, y = 0, t = 0) {
+  const img = assets.get('scenes/' + id);
+  const x = Math.round((W - 480) / 2);
+  if (img) drawFull(img, x, y, { extendY: false });
+  else { drawSky(0, y, W, 140, 0.75, 'sunny', t); drawScene(id, x, y, 480, 200, t); }
+}
+
+
+// Draw an image at native size at (x, y) and fill the rest of the screen
+// around it so there are never bars: a soft stretched copy fills the sides,
+// and the image's top/bottom rows are stretched to fill above/below.
+export function drawFull(img, x, y, opts = {}) {
+  if (!img) return;
+  const c = gfx.ctx;
+  const w = img.width, h = img.height;
+  if (x > 0 || x + w < W) {
+    c.save();
+    c.imageSmoothingEnabled = true;
+    try { c.filter = 'blur(6px) brightness(0.72) saturate(1.2)'; } catch (_) { /* ignore */ }
+    c.drawImage(img, -20, y - 10, W + 40, h + 20);
+    c.restore();
+    c.imageSmoothingEnabled = false;
+  }
+  if (opts.extendY !== false) {
+    if (y > 0) c.drawImage(img, 0, 0, w, 1, 0, 0, W, y + 1);
+    if (y + h < H) {
+      const bh = H - (y + h);
+      c.save();
+      c.imageSmoothingEnabled = true;
+      try { c.filter = 'blur(10px) brightness(0.45) saturate(1.1)'; } catch (_) { /* ignore */ }
+      c.drawImage(img, 0, Math.max(0, h - 50), w, Math.min(50, h), -20, y + h - 10, W + 40, bh + 30);
+      c.restore();
+      c.imageSmoothingEnabled = false;
+      gfx.alpha(0.35, () => gfx.rect(0, y + h, W, bh, '#1b1424'));
+    }
+  }
+  c.drawImage(img, Math.round(x), Math.round(y));
 }

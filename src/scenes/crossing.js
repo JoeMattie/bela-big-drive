@@ -1,8 +1,9 @@
 // Mountain passes (Grapevine, Siskiyou) and the Wheatland Ferry.
-import { gfx, PAL } from '../engine/gfx.js';
+import { gfx, PAL, W, H, ui } from '../engine/gfx.js';
 import { audio } from '../engine/audio.js';
 import { Menu } from '../engine/ui.js';
 import { drawScene, Weather } from '../engine/art.js';
+import { drawLocationArt, artY } from './stop.js';
 import { game } from '../game/game.js';
 import { chance } from '../game/state.js';
 import { runResultFn } from './message.js';
@@ -170,18 +171,27 @@ game.register('crossing', () => ({
   },
   draw() {
     const s = game.state;
-    drawScene(s.node, 0, 0, 480, 200, this.t);
-    this.wx.draw(s.weather, 200);
-    const h = this.menu.items.length * 18 + 98;
-    gfx.panel(16, 300 - h - 4, 448, h);
-    const y0 = 300 - h + 8;
-    gfx.text(this.n.name.toUpperCase(), 240, y0, { size: 10, head: true, align: 'center', color: PAL.hi });
+    const P = ui.portrait, fs = ui.fs, lh = ui.lh;
+    const ay = drawLocationArt(s.node, this.t);
+    this.wx.draw(s.weather, ay + 200);
     const cond = this.ferry
       ? (this.cond === 'highwater' ? 'FERRY CLOSED: high water on the Willamette. The river is brown and fast.' : this.cond === 'fog' ? 'The ferry is running, slowly, in thick fog.' : 'The ferry is running. Oversize vehicles: $12. Capacity: 9 cars, or one Georgetown.')
       : COND_TEXT[this.cond];
     const bad = ['closed', 'chains', 'wind', 'highwater'].includes(this.cond);
-    gfx.wrap(cond, 410, 16).forEach((l, i) => gfx.text(l, 36, y0 + 18 + i * 17, { color: bad ? PAL.warn : PAL.text }));
-    if (!this.ferry) gfx.text(`Chains: ${s.has('chains') ? 'yes ✓' : 'none!'}   Pace: ${s.pace === 'floorit' ? 'Floor It' : s.pace === 'mosey' ? 'Moseying' : 'Cruising'}   RV: ${s.rv}%`, 36, y0 + 56, { size: 14, color: PAL.dim });
-    this.menu.draw();
+    const pw = P ? W - 20 : Math.min(448, W - 32), px = (W - pw) / 2;
+    const lines = gfx.wrap(cond, pw - 40, fs);
+    const m = this.menu;
+    m.size = fs; m.lh = ui.mlh; m.x = px + 20; m.w = pw - 40;
+    const h = 30 + lines.length * lh + (this.ferry ? 4 : lh + 4) + m.items.length * m.lh + 14;
+    const py = P ? ay + 206 : H - h - 4;
+    gfx.panel(px, py, pw, h);
+    let y = py + 12;
+    gfx.text(this.n.name.toUpperCase(), W / 2, y, { size: P ? 12 : 10, head: true, align: 'center', color: PAL.hi });
+    y += 18;
+    lines.forEach((l, i) => gfx.text(l, px + 20, y + i * lh, { size: fs, color: bad ? PAL.warn : PAL.text }));
+    y += lines.length * lh;
+    if (!this.ferry) { gfx.text(`Chains: ${s.has('chains') ? 'yes ✓' : 'none!'}   Pace: ${s.pace === 'floorit' ? 'Floor It' : s.pace === 'mosey' ? 'Moseying' : 'Cruising'}   RV: ${s.rv}%`, px + 20, y, { size: P ? 18 : 14, color: PAL.dim }); y += lh; }
+    m.y = y + 4;
+    m.draw();
   },
 }));

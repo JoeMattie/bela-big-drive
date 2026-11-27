@@ -1,4 +1,4 @@
-import { gfx, PAL } from '../engine/gfx.js';
+import { gfx, PAL, W, H, ui } from '../engine/gfx.js';
 import { input } from '../engine/input.js';
 import { audio } from '../engine/audio.js';
 import { drawPortrait, bar, drawIcon } from '../engine/ui.js';
@@ -169,48 +169,102 @@ game.register('travel', () => ({
       this.endOfDay();
     }
   },
+  viewH() { return ui.portrait ? Math.min(420, Math.max(220, Math.round(H * 0.4))) : 190; },
   draw() {
     const s = game.state;
     const tod = Math.min(0.97, 0.05 + (this.todStart + (1 - (game.state.dayLeft ?? 0) - this.todStart) * Math.min(1, this.dayT / (DAY_LEN * Math.max(0.25, this.res.frac || 1)))) * 0.92);
     const biome = s.biome();
-    const roadY = drawTravelView(biome, this.scroll, tod, s.weather, this.t, 190);
+    const vh = this.viewH();
+    const roadY = drawTravelView(biome, this.scroll, tod, s.weather, this.t, vh);
+    const rvX = Math.round(W * 0.37 - 64);
     this.life.drawBehind(roadY);
-    drawRV(176, roadY - 46, this.t, { moving: !this.busy && this.speed > 0, hazard: s.rv < 30 });
+    drawRV(rvX, roadY - 46, this.t, { moving: !this.busy && this.speed > 0, hazard: s.rv < 30 });
     this.life.drawFront(roadY);
-    // night headlights
-    if (tod > 0.8) gfx.alpha(0.25, () => gfx.rect(300, roadY - 14, 90, 12, '#fff6b0'));
-    this.wx.draw(s.weather, 190);
-    if (!this.busy) this.life.drawBubble(176, roadY - 46);
-    this.drawPanel(s);
+    if (tod > 0.8) gfx.alpha(0.25, () => gfx.rect(rvX + 124, roadY - 14, 90, 12, '#fff6b0'));
+    this.wx.draw(s.weather, vh);
+    if (!this.busy) this.life.drawBubble(rvX, roadY - 46);
+    if (ui.portrait) this.drawPanelPortrait(s, vh);
+    else this.drawPanel(s);
   },
-  drawPanel(s) {
-    gfx.panel(0, 186, 480, 114);
+  stats(s) {
     const leg = s.leg;
     const to = leg ? NODES[leg.to] : s.nodeData;
     const done = this.shownDone ?? (leg ? leg.done : 0);
     const left = leg ? Math.max(0, Math.round(leg.miles - done)) : 0;
-    const L = 12, R = 250, y0 = 194, lh = 17;
+    const lag = leg ? leg.done - done : 0;
+    return {
+      date: s.date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
+      weather: WEATHER[s.weather].name, weatherBad: ['snow', 'storm', 'smoke', 'scorching'].includes(s.weather),
+      next: `${to.name.split(',')[0]} (${left} mi)`,
+      traveled: `${Math.round(s.milesTotal - lag)} mi`,
+      togo: `${Math.max(0, Math.round(s.milesToGo() + lag))} mi`,
+      pace: { mosey: 'Moseying', cruise: 'Cruising', floorit: 'Floor It!' }[s.pace],
+    };
+  },
+  hint() {
+    return input.lastPointerType === 'mouse' ? 'Press ENTER to size up the situation' : (input.lastPointerType === 'touch' ? 'Tap to stop & size up the situation' : 'Press ENTER to size up the situation');
+  },
+  drawPanel(s) {
+    const st = this.stats(s);
+    gfx.panel(0, 186, W, H - 186);
+    const L = 12, R = Math.round(W / 2 + 10), y0 = 194, lh = 17;
     const row = (x, y, k, v, c) => { gfx.text(k, x, y, { size: 16, color: PAL.dim }); gfx.text(v, x + 74, y, { size: 16, color: c || PAL.text }); };
-    row(L, y0, 'Date:', s.date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }));
-    row(L, y0 + lh, 'Weather:', WEATHER[s.weather].name, ['snow', 'storm', 'smoke', 'scorching'].includes(s.weather) ? PAL.warn : PAL.text);
+    row(L, y0, 'Date:', st.date);
+    row(L, y0 + lh, 'Weather:', st.weather, st.weatherBad ? PAL.warn : PAL.text);
     row(L, y0 + lh * 2, 'Vibes:', s.vibesWord(), s.vibes < 35 ? PAL.bad : s.vibes > 70 ? PAL.good : PAL.text);
     row(L, y0 + lh * 3, 'Health:', s.healthWord(s.avgHealth()), s.avgHealth() < 40 ? PAL.bad : PAL.text);
-    row(L, y0 + lh * 4, 'Pace:', { mosey: 'Moseying', cruise: 'Cruising', floorit: 'Floor It!' }[s.pace]);
-    row(R, y0, 'Next:', `${to.name.split(',')[0]} (${left} mi)`, PAL.hi);
-    row(R, y0 + lh, 'Traveled:', `${Math.round(s.milesTotal - (leg ? leg.done - done : 0))} mi`);
-    row(R, y0 + lh * 2, 'To go:', `${Math.max(0, Math.round(s.milesToGo() + (leg ? leg.done - done : 0)))} mi to Portland`);
-    // gas & food bars
+    row(L, y0 + lh * 4, 'Pace:', st.pace);
+    row(R, y0, 'Next:', st.next, PAL.hi);
+    row(R, y0 + lh, 'Traveled:', st.traveled);
+    row(R, y0 + lh * 2, 'To go:', st.togo + ' to Portland');
     gfx.text('Gas', R, y0 + lh * 3 + 1, { size: 14, color: PAL.dim });
     bar(R + 30, y0 + lh * 3 + 4, 60, 8, s.inv.gas / 75);
     gfx.text('RV', R + 100, y0 + lh * 3 + 1, { size: 14, color: PAL.dim });
     bar(R + 120, y0 + lh * 3 + 4, 60, 8, s.rv / 100);
-    // party heads
     s.members.forEach((m, i) => {
       const x = R + i * 44, y = y0 + lh * 4 + 2;
       drawPortrait(m.id, x, y, m.gone ? 'neutral' : m.ailment || m.health < 40 ? 'sick' : 'neutral', { size: 16, gone: m.gone });
       if (!m.gone) bar(x + 18, y + 6, 20, 5, m.health / 100);
     });
-    const hint = input.lastPointerType === 'touch' ? 'Tap to stop & size up the situation' : 'Press ENTER to size up the situation';
-    if (!this.busy && Math.floor(this.t * 1.5) % 2 === 0) gfx.text(hint, 240, 174, { size: 14, align: 'center', color: '#fff', shadowColor: '#000' });
+    if (!this.busy && Math.floor(this.t * 1.5) % 2 === 0) gfx.text(this.hint(), W / 2, 174, { size: 14, align: 'center', color: '#fff', shadowColor: '#000' });
+  },
+  drawPanelPortrait(s, vh) {
+    const st = this.stats(s);
+    const y0 = vh - 4;
+    gfx.panel(0, y0, W, H - y0);
+    let y = y0 + 18;
+    const fs = 20, lh = 27, kx = 28, vx = 150;
+    // next stop headline
+    gfx.text('NEXT STOP', W / 2, y, { size: 10, head: true, align: 'center', color: PAL.dim });
+    y += 16;
+    gfx.text(st.next, W / 2, y, { size: 26, align: 'center', color: PAL.hi });
+    y += 38;
+    const row = (k, v, c) => { gfx.text(k, kx, y, { size: fs, color: PAL.dim }); gfx.text(v, vx, y, { size: fs, color: c || PAL.text }); y += lh; };
+    row('Date', st.date);
+    row('Weather', st.weather, st.weatherBad ? PAL.warn : PAL.text);
+    row('Vibes', s.vibesWord(), s.vibes < 35 ? PAL.bad : s.vibes > 70 ? PAL.good : PAL.text);
+    row('Pace', st.pace);
+    row('Traveled', st.traveled);
+    row('To Portland', st.togo);
+    y += 4;
+    gfx.text('Gas', kx, y, { size: fs, color: PAL.dim }); bar(vx, y + 5, 110, 12, s.inv.gas / 75);
+    gfx.text('RV', vx + 130, y, { size: fs, color: PAL.dim }); bar(vx + 165, y + 5, 110, 12, s.rv / 100);
+    y += lh + 10;
+    // crew
+    const n = s.members.length, size = 52, gap = Math.floor((W - 40 - n * size) / (n - 1));
+    s.members.forEach((m, i) => {
+      const x = 20 + i * (size + gap);
+      drawPortrait(m.id, x, y, m.gone ? 'neutral' : m.ailment || m.health < 40 ? 'sick' : m.health > 80 ? 'happy' : 'neutral', { size, gone: m.gone });
+      if (!m.gone) bar(x, y + size + 6, size, 7, m.health / 100);
+      gfx.text(MEMBER[m.id].name, x + size / 2, y + size + 15, { size: 16, align: 'center', color: PAL.dim });
+    });
+    y += size + 44;
+    // big stop button
+    const by = Math.max(y, H - 70), bh = 48;
+    if (by + bh < H - 6) {
+      gfx.rect(24, by, W - 48, bh, this.busy ? '#3d2b52' : '#5a3a20');
+      gfx.strokeRect(24, by, W - 48, bh, PAL.edge);
+      gfx.text(this.busy ? '…' : 'STOP & SIZE UP THE SITUATION', W / 2, by + 18, { size: 10, head: true, align: 'center', color: PAL.hi });
+    }
   },
 }));

@@ -1,7 +1,8 @@
-import { gfx, PAL, FONT_BODY, FONT_HEAD } from './engine/gfx.js';
+import { gfx, PAL, FONT_BODY, FONT_HEAD, W, H } from './engine/gfx.js';
 import { input } from './engine/input.js';
 import { assets } from './engine/assets.js';
 import { audio } from './engine/audio.js';
+import { initLayout } from './engine/layout.js';
 import { game } from './game/game.js';
 import { NODES } from './data/route.js';
 import { PARTY } from './data/party.js';
@@ -30,9 +31,12 @@ async function loadFonts() {
   await Promise.all(fonts.map((f) => f.load().then((ff) => document.fonts.add(ff)).catch(() => null)));
 }
 
+const NO_SWIPE = new Set(['forage', 'freeway', 'catchase', 'travel']);
+
 async function boot() {
   const canvas = document.getElementById('game');
   gfx.init(canvas);
+  initLayout();
   input.init(canvas);
   input.onFirstGesture = () => audio.init();
 
@@ -40,11 +44,11 @@ async function boot() {
   const loadingLoop = () => {
     if (!loading) return;
     gfx.begin();
-    gfx.rect(0, 0, 480, 300, PAL.ink);
+    gfx.rect(0, 0, W, H, PAL.ink);
     const p = assets.progress();
-    gfx.text('Loading the Georgetown…', 240, 130, { size: 16, align: 'center' });
-    gfx.rect(140, 155, 200, 8, '#000');
-    gfx.rect(141, 156, Math.round(198 * p), 6, PAL.edge);
+    gfx.text('Loading the Georgetown…', W / 2, H / 2 - 20, { size: 16, align: 'center' });
+    gfx.rect(W / 2 - 100, H / 2 + 5, 200, 8, '#000');
+    gfx.rect(W / 2 - 99, H / 2 + 6, Math.round(198 * p), 6, PAL.edge);
     gfx.end(0);
     requestAnimationFrame(loadingLoop);
   };
@@ -69,6 +73,11 @@ async function boot() {
   const frame = (now) => {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
+    // swipes steer menus/cursors everywhere except action minigames
+    const top = game.top();
+    if (input.swipes.length && top && !NO_SWIPE.has(top.name)) {
+      for (const sw of input.swipes) input.pressed.push({ up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' }[sw]);
+    }
     game.update(dt);
     game.tickFade(dt);
     gfx.begin();

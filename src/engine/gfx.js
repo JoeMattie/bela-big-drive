@@ -1,9 +1,22 @@
-// Rendering core: a fixed 480x300 logical canvas scaled to the window.
-// Images are drawn with nearest-neighbour; text uses pixel fonts rendered at
-// the backing resolution so it stays crisp at any scale.
+// Rendering core. The logical canvas adapts to the screen's shape so the game
+// always fills the whole screen: 300 px tall on landscape screens (wider on
+// wide phones), 480 px wide on portrait screens (taller). Images are drawn
+// nearest-neighbour; text renders at backing resolution so it stays crisp.
 
-export const W = 480;
-export const H = 300;
+export let W = 480;
+export let H = 300;
+export const STAGE_W = 480; // fixed-size scenes (minigames) use a 480x300 stage
+export const STAGE_H = 300;
+
+export function isPortrait() { return H > W * 1.1; }
+// Shared responsive metrics
+export const ui = {
+  get portrait() { return isPortrait(); },
+  get fs() { return isPortrait() ? 20 : 16; },      // body font size
+  get lh() { return isPortrait() ? 25 : 19; },      // body line height
+  get mlh() { return isPortrait() ? 34 : 19; },     // menu row height (tap targets)
+  get artX() { return Math.round((W - 480) / 2); }, // where 480-wide art sits
+};
 
 export const PAL = {
   ink: '#1b1424',
@@ -47,20 +60,27 @@ class Gfx {
     this.ctx = canvas.getContext('2d', { alpha: false });
     this.resize();
     window.addEventListener('resize', () => this.resize());
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', () => this.resize());
+    window.addEventListener('orientationchange', () => setTimeout(() => this.resize(), 250));
   }
 
   resize() {
-    const vw = window.innerWidth, vh = window.innerHeight;
-    let s = Math.min(vw / W, vh / H);
-    if (s >= 2) s = Math.floor(s); // integer scale when there is room
-    this.scale = s;
+    const v = window.visualViewport;
+    const vw = Math.max(1, Math.round(v ? v.width : window.innerWidth));
+    const vh = Math.max(1, Math.round(v ? v.height : window.innerHeight));
+    const aspect = vw / vh;
+    if (aspect >= 1.6) { H = 300; W = Math.min(720, Math.round(300 * aspect)); }
+    else if (aspect >= 0.9) { W = 480; H = Math.round(480 / aspect); }
+    else { W = 480; H = Math.min(1200, Math.round(480 / aspect)); }
+    this.scale = Math.min(vw / W, vh / H);
     this.dpr = window.devicePixelRatio || 1;
-    const cssW = Math.round(W * s), cssH = Math.round(H * s);
+    const cssW = Math.round(W * this.scale), cssH = Math.round(H * this.scale);
     this.canvas.style.width = cssW + 'px';
     this.canvas.style.height = cssH + 'px';
     this.canvas.width = Math.round(cssW * this.dpr);
     this.canvas.height = Math.round(cssH * this.dpr);
     this.ctx.imageSmoothingEnabled = false;
+    if (this.onResize) this.onResize();
   }
 
   begin() {

@@ -1,4 +1,4 @@
-import { gfx, PAL } from '../engine/gfx.js';
+import { gfx, PAL, W, H, ui } from '../engine/gfx.js';
 import { input } from '../engine/input.js';
 import { audio } from '../engine/audio.js';
 import { drawIcon, Typewriter, continueHint } from '../engine/ui.js';
@@ -99,16 +99,47 @@ game.register('store', () => ({
     }
     if (input.back()) this.checkout();
     if (input.hit('r') && this.start) this.suggest();
-    // mouse
+    // pointer
+    const G = this.geo();
     ITEMS.forEach((it, i) => {
-      const y = this.rowY(i);
-      if (input.mouse.moved && input.hover(10, y, 460, 14)) this.sel = i;
-      if (input.clickIn(338, y - 1, 18, 16)) { this.sel = i; this.adjust(it, -1); input.consumeClicks(); }
-      else if (input.clickIn(384, y - 1, 18, 16)) { this.sel = i; this.adjust(it, 1); input.consumeClicks(); }
-      else if (input.clickIn(10, y, 320, 15)) { this.sel = i; input.consumeClicks(); }
+      const r = G.row(i);
+      if (input.mouse.moved && input.hover(r.x, r.y, r.w, r.h)) this.sel = i;
+      if (input.clickIn(...r.minus)) { this.sel = i; this.adjust(it, -1); input.consumeClicks(); }
+      else if (input.clickIn(...r.plus)) { this.sel = i; this.adjust(it, 1); input.consumeClicks(); }
+      else if (input.clickIn(r.x, r.y, r.w, r.h)) { this.sel = i; input.consumeClicks(); }
     });
-    if (input.clickIn(300, 274, 170, 22)) this.checkout();
-    if (this.start && input.clickIn(10, 274, 170, 22)) this.suggest();
+    if (input.clickIn(...G.pay)) this.checkout();
+    if (this.start && input.clickIn(...G.picks)) this.suggest();
+  },
+  // Screen geometry for the current shape.
+  geo() {
+    const P = ui.portrait;
+    if (!P) {
+      const ox = Math.round((W - 480) / 2), oy = Math.round((H - 300) / 2);
+      return {
+        P, ox, oy,
+        row: (i) => {
+          const y = oy + 44 + i * 14;
+          return { x: ox + 10, y: y - 1, w: 460, h: 14, ty: y, minus: [ox + 336, y - 2, 22, 16], plus: [ox + 382, y - 2, 22, 16] };
+        },
+        descY: oy + 44 + ITEMS.length * 14 + 2,
+        pay: [ox + 300, oy + 274, 170, 20],
+        picks: [ox + 10, oy + 274, 170, 20],
+      };
+    }
+    const top = 76;
+    const rh = Math.max(30, Math.min(46, Math.floor((H - top - 200) / ITEMS.length)));
+    return {
+      P, ox: 0, oy: 0, rh, top,
+      row: (i) => {
+        const y = top + i * rh;
+        const bh = Math.min(rh - 4, 38);
+        return { x: 6, y, w: W - 12, h: rh, ty: y, minus: [262, y + (rh - bh) / 2, 50, bh], plus: [370, y + (rh - bh) / 2, 50, bh] };
+      },
+      descY: top + ITEMS.length * rh + 8,
+      pay: [W / 2 + 6, H - 72, W / 2 - 18, 52],
+      picks: [12, H - 72, W / 2 - 18, 52],
+    };
   },
   suggest() {
     for (const it of ITEMS) this.cart[it.id] = 0;
@@ -120,53 +151,94 @@ game.register('store', () => ({
     audio.sfx('cash');
     this.flash('Marisol fills your cart with "the usual."');
   },
-  rowY(i) { return 44 + i * 14; },
   draw() {
     const s = game.state;
-    gfx.rect(0, 0, 480, 300, '#20182c');
-    gfx.panel(4, 4, 472, 292);
-    gfx.text(this.storeName, 240, 14, { size: 10, head: true, align: 'center', color: PAL.hi });
-    gfx.text(s.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), 18, 12, { size: 14, color: PAL.dim });
-    gfx.text(`Cash: $${s.money}`, 462, 12, { size: 14, color: PAL.good, align: 'right' });
-    gfx.text('ITEM', 34, 32 + 0, { size: 12, color: PAL.mute });
-    gfx.text('HAVE', 270, 32, { size: 12, color: PAL.mute, align: 'right' });
-    gfx.text('PRICE', 330, 32, { size: 12, color: PAL.mute, align: 'right' });
-    gfx.text('BUY', 370, 32, { size: 12, color: PAL.mute, align: 'center' });
-    gfx.text('COST', 458, 32, { size: 12, color: PAL.mute, align: 'right' });
+    const G = this.geo();
+    const P = G.P;
+    gfx.rect(0, 0, W, H, '#20182c');
+    if (P) gfx.panel(0, 0, W, H); else gfx.panel(G.ox + 4, G.oy + 4, 472, 292);
+    const ox = G.ox, oy = G.oy;
+    const L = P ? 14 : ox + 18, R = P ? W - 14 : ox + 462;
+    gfx.text(this.storeName, W / 2, oy + (P ? 16 : 14), { size: P ? 12 : 10, head: true, align: 'center', color: PAL.hi });
+    const date = s.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    if (P) {
+      gfx.text(date, L, 38, { size: 18, color: PAL.dim });
+      gfx.text(`Cash: $${s.money}`, R, 38, { size: 18, color: PAL.good, align: 'right' });
+    } else {
+      gfx.text(date, L, oy + 12, { size: 14, color: PAL.dim });
+      gfx.text(`Cash: $${s.money}`, R, oy + 12, { size: 14, color: PAL.good, align: 'right' });
+      gfx.text('ITEM', ox + 34, oy + 32, { size: 12, color: PAL.mute });
+      gfx.text('HAVE', ox + 270, oy + 32, { size: 12, color: PAL.mute, align: 'right' });
+      gfx.text('PRICE', ox + 330, oy + 32, { size: 12, color: PAL.mute, align: 'right' });
+      gfx.text('BUY', ox + 370, oy + 32, { size: 12, color: PAL.mute, align: 'center' });
+      gfx.text('COST', ox + 458, oy + 32, { size: 12, color: PAL.mute, align: 'right' });
+    }
     ITEMS.forEach((it, i) => {
-      const y = this.rowY(i);
+      const r = G.row(i);
       const on = i === this.sel;
-      if (on) gfx.alpha(0.35, () => gfx.rect(10, y - 1, 460, 14, PAL.edge));
-      drawIcon(it.icon, 14, y - 2);
-      const col = on ? PAL.hi : PAL.text;
-      gfx.text(`${it.name}`, 34, y, { size: 14, color: col });
-      gfx.text(`${Math.round(s.inv[it.id])}`, 270, y, { size: 14, color: PAL.dim, align: 'right' });
       const p = this.price(it);
-      gfx.text(p === 0 ? 'free' : `$${p.toFixed(p % 1 ? 2 : 0)}/${it.step}`, 330, y, { size: 14, color: PAL.dim, align: 'right' });
-      gfx.text('–', 347, y, { size: 14, color: this.cart[it.id] ? PAL.text : PAL.mute, align: 'center' });
-      gfx.text(`${this.cart[it.id] * it.step}`, 370, y, { size: 14, color: this.cart[it.id] ? PAL.hi : PAL.mute, align: 'center' });
-      gfx.text('+', 393, y, { size: 14, color: PAL.text, align: 'center' });
+      const priceTxt = p === 0 ? 'free' : `$${p.toFixed(p % 1 ? 2 : 0)}/${it.step}`;
       const c = this.cart[it.id] * p;
-      gfx.text(c ? `$${c.toFixed(0)}` : '', 458, y, { size: 14, color: PAL.text, align: 'right' });
+      const col = on ? PAL.hi : PAL.text;
+      if (on) gfx.alpha(0.35, () => gfx.rect(r.x, r.y, r.w, r.h, PAL.edge));
+      if (P) {
+        const twoLine = G.rh >= 38;
+        const ny = r.y + (twoLine ? 3 : (G.rh - 20) / 2);
+        drawIcon(it.icon, 12, r.y + (G.rh - 16) / 2);
+        gfx.text(it.name, 36, ny, { size: 20, color: col });
+        if (twoLine) gfx.text(`have ${Math.round(s.inv[it.id])} · ${priceTxt}`, 36, ny + 19, { size: 16, color: PAL.dim });
+        else gfx.text(`(${Math.round(s.inv[it.id])})`, 210, ny + 2, { size: 16, color: PAL.dim, align: 'right' });
+        for (const [b, lbl, en] of [[r.minus, '−', this.cart[it.id] > 0], [r.plus, '+', true]]) {
+          gfx.rect(b[0], b[1], b[2], b[3], en ? '#4a3560' : '#2e2140');
+          gfx.strokeRect(b[0], b[1], b[2], b[3], en ? PAL.edge : PAL.edgeLo);
+          gfx.text(lbl, b[0] + b[2] / 2, b[1] + b[3] / 2 - 12, { size: 24, align: 'center', color: en ? PAL.text : PAL.mute });
+        }
+        gfx.text(`${this.cart[it.id] * it.step}`, 341, r.y + (G.rh - 22) / 2, { size: 22, color: this.cart[it.id] ? PAL.hi : PAL.mute, align: 'center' });
+        gfx.text(c ? `$${c.toFixed(0)}` : '', W - 12, r.y + (G.rh - 20) / 2, { size: 18, color: PAL.text, align: 'right' });
+      } else {
+        const y = r.ty;
+        drawIcon(it.icon, ox + 14, y - 2);
+        gfx.text(`${it.name}`, ox + 34, y, { size: 14, color: col });
+        gfx.text(`${Math.round(s.inv[it.id])}`, ox + 270, y, { size: 14, color: PAL.dim, align: 'right' });
+        gfx.text(priceTxt, ox + 330, y, { size: 14, color: PAL.dim, align: 'right' });
+        gfx.text('–', ox + 347, y, { size: 14, color: this.cart[it.id] ? PAL.text : PAL.mute, align: 'center' });
+        gfx.text(`${this.cart[it.id] * it.step}`, ox + 370, y, { size: 14, color: this.cart[it.id] ? PAL.hi : PAL.mute, align: 'center' });
+        gfx.text('+', ox + 393, y, { size: 14, color: PAL.text, align: 'center' });
+        gfx.text(c ? `$${c.toFixed(0)}` : '', ox + 458, y, { size: 14, color: PAL.text, align: 'right' });
+      }
     });
     const it = ITEMS[this.sel];
-    const dy = this.rowY(ITEMS.length) + 2;
-    gfx.rect(12, dy - 2, 456, 1, PAL.edgeLo);
-    if (this.flashT > 0) gfx.text(this.flashMsg, 240, dy, { size: 14, color: PAL.warn, align: 'center' });
-    else if (it) gfx.wrap(it.desc, 450, 12).slice(0, 2).forEach((l, i) => gfx.text(l, 240, dy - 1 + i * 11, { size: 12, color: PAL.dim, align: 'center' }));
+    const dy = G.descY;
+    const dw = P ? W - 30 : 450, dfs = P ? 18 : 12, dlh = P ? 22 : 11;
+    gfx.rect(P ? 12 : ox + 12, dy - 2, P ? W - 24 : 456, 1, PAL.edgeLo);
+    if (this.flashT > 0) gfx.text(this.flashMsg, W / 2, dy + 2, { size: P ? 18 : 14, color: PAL.warn, align: 'center' });
+    else if (it) gfx.wrap(it.desc, dw, dfs).slice(0, P ? 3 : 2).forEach((l, i) => gfx.text(l, W / 2, dy - 1 + i * dlh + (P ? 4 : 0), { size: dfs, color: PAL.dim, align: 'center' }));
     // footer buttons
     const doneOn = this.sel === ITEMS.length;
+    const bfs = P ? 20 : 14;
     if (this.start) {
-      gfx.rect(10, 274, 170, 20, '#3d2b52');
-      gfx.text('R: Marisol\'s picks', 95, 276, { size: 14, align: 'center', color: PAL.teal });
+      const b = G.picks;
+      gfx.rect(b[0], b[1], b[2], b[3], '#3d2b52');
+      if (P) gfx.strokeRect(b[0], b[1], b[2], b[3], PAL.teal);
+      gfx.text(P ? "Marisol's picks" : 'R: Marisol\'s picks', b[0] + b[2] / 2, b[1] + (b[3] - bfs) / 2, { size: bfs, align: 'center', color: PAL.teal });
     }
-    gfx.rect(300, 274, 170, 20, doneOn ? PAL.edge : '#3d2b52');
-    gfx.text(`Pay $${this.total().toFixed(0)} & leave`, 385, 276, { size: 14, align: 'center', color: doneOn ? PAL.ink : PAL.hi, shadow: !doneOn });
+    const b = G.pay;
+    gfx.rect(b[0], b[1], b[2], b[3], doneOn || P ? PAL.edge : '#3d2b52');
+    gfx.text(`Pay $${this.total().toFixed(0)} & leave`, b[0] + b[2] / 2, b[1] + (b[3] - bfs) / 2, { size: bfs, align: 'center', color: doneOn || P ? PAL.ink : PAL.hi, shadow: !(doneOn || P) });
     if (this.start && !this.adviceDismissed) {
-      gfx.alpha(0.6, () => gfx.rect(0, 0, 480, 300, '#000'));
-      gfx.panel(30, 60, 420, 180);
-      this.advice.draw(44, 74);
-      if (this.advice.done) continueHint(this.t, 240, 220);
+      gfx.alpha(0.6, () => gfx.rect(0, 0, W, H, '#000'));
+      const aw = P ? W - 24 : Math.min(420, W - 40);
+      if (!this.advice || this.advW !== aw || this.advF !== ui.fs) {
+        const shown = this.advice ? this.advice.shown : 0;
+        this.advice = new Typewriter(ADVICE, aw - 28, ui.fs, 90);
+        this.advice.shown = Math.min(shown, this.advice.total);
+        this.advW = aw; this.advF = ui.fs;
+      }
+      const ah = this.advice.height(ui.lh) + 50;
+      const ay = Math.max(6, (H - ah) / 2);
+      gfx.panel((W - aw) / 2, ay, aw, ah);
+      this.advice.draw((W - aw) / 2 + 14, ay + 14, PAL.text, ui.lh);
+      if (this.advice.done) continueHint(this.t, W / 2, ay + ah - 22);
     }
   },
 }));

@@ -3,7 +3,7 @@ import { input } from '../engine/input.js';
 import { audio } from '../engine/audio.js';
 import { assets } from '../engine/assets.js';
 import { Menu, Typewriter, continueHint, drawPortrait } from '../engine/ui.js';
-import { drawScene } from '../engine/art.js';
+import { drawScene, drawFull } from '../engine/art.js';
 import { game } from '../game/game.js';
 import { MEMBER } from '../data/party.js';
 import { NODES } from '../data/route.js';
@@ -16,8 +16,16 @@ function rankFor(score) {
   return 'Greenhorn';
 }
 
+// Full-screen art behind a centered stage (so wide/tall screens have no bars).
+const artBackdrop = (id) => (o) => {
+  const img = assets.get('scenes/' + id);
+  if (img) drawFull(img, o.x, o.y);
+  else gfx.rect(0, 0, 2000, 2000, PAL.night);
+};
+
 // ---------------- Victory ----------------
 game.register('ending', () => ({
+  backdrop: artBackdrop('ending'),
   enter() {
     const s = game.state;
     clearSave();
@@ -127,6 +135,7 @@ const REVIEW_CHOICES = [
   '★★★★★ "Best worst trip of our lives."',
 ];
 game.register('gameover', () => ({
+  backdrop: artBackdrop('gameover'),
   enter({ reason }) {
     const s = game.state;
     this.t = 0;
@@ -223,6 +232,7 @@ game.register('learn', () => ({
 
 // ---------------- Departure cinematic ----------------
 game.register('departure', () => ({
+  backdrop: artBackdrop('san_diego'),
   enter() {
     const s = game.state;
     this.t = 0;

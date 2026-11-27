@@ -1,5 +1,5 @@
 // Reusable UI widgets: menus, portraits, icons, typewriter text.
-import { gfx, PAL } from './gfx.js';
+import { gfx, PAL, W, H, ui } from './gfx.js';
 import { input } from './input.js';
 import { assets } from './assets.js';
 import { audio } from './audio.js';
@@ -36,6 +36,7 @@ export class Menu {
   // returns true if an item was picked
   update(dt) {
     this.cursorBlink += dt;
+    if (this.tapHint) this.tapHint = Math.max(0, this.tapHint - dt);
     if (input.any('ArrowUp', 'w')) this.move(-1);
     if (input.any('ArrowDown', 's')) this.move(1);
     if (this.sel < this.scroll) this.scroll = this.sel;
@@ -51,8 +52,10 @@ export class Menu {
         this.sel = i;
       }
       if (input.clickIn(this.x - 4, y - 1, this.w, this.lh) && !this.items[i].disabled) {
-        this.sel = i;
         input.consumeClicks();
+        // on touch: first tap highlights, second tap on the same item chooses
+        if (input.lastPointerType !== 'mouse' && this.sel !== i) { this.sel = i; this.tapHint = 1.5; audio.sfx('select'); return false; }
+        this.sel = i;
         return this.pick();
       }
     }
@@ -60,6 +63,7 @@ export class Menu {
     if (input.back() && this.onBack) { audio.sfx('back'); this.onBack(); return true; }
     return false;
   }
+  touchMode() { return input.lastPointerType === 'touch' || input.lastPointerType === 'pen'; }
   pick() {
     const it = this.items[this.sel];
     if (!it || it.disabled) return false;
@@ -81,7 +85,10 @@ export class Menu {
       const label = (this.numbered && i < 9 ? `${i + 1}. ` : '') + it.label;
       if (on && Math.floor(this.cursorBlink * 3) % 2 === 0) gfx.text('▸', this.x - 12, y, { size: this.size, color: PAL.hi });
       gfx.text(label, this.x, y, { size: this.size, color: col });
-      if (it.right) gfx.text(it.right, this.x + this.w - 10, y, { size: this.size, color: on ? PAL.hi : PAL.dim, align: 'right' });
+      if (it.right && !(on && this.tapHint)) gfx.text(it.right, this.x + this.w - 10, y, { size: this.size, color: on ? PAL.hi : PAL.dim, align: 'right' });
+      if (on && input.lastPointerType !== 'mouse' && input.lastPointerType !== '' && this.touchMode()) {
+        gfx.text(this.tapHint ? 'tap again ✓' : '✓', this.x + this.w - 10, y + (this.size - 12) / 2, { size: 12, color: PAL.good, align: 'right' });
+      }
     });
     if (this.scroll > 0) gfx.text('▲', this.x + this.w - 14, this.y - 12, { size: 12, color: PAL.dim });
     if (this.scroll + this.maxRows < this.items.length) gfx.text('▼', this.x + this.w - 14, this.y + this.maxRows * this.lh, { size: 12, color: PAL.dim });
@@ -166,8 +173,35 @@ export class Typewriter {
 }
 
 // Blinking "press to continue" hint
-export function continueHint(t, x = 240, y = 284, label = null) {
+export function continueHint(t, x = null, y = null, label = null) {
+  if (x === null) x = W / 2;
+  if (y === null) y = H - (ui.portrait ? 30 : 16);
   const touch = input.lastPointerType === 'touch';
   const txt = label || (touch ? 'Tap to continue' : 'Press ENTER to continue');
-  if (Math.floor(t * 2) % 2 === 0) gfx.text(txt, x, y, { size: 12, align: 'center', color: PAL.dim });
+  if (Math.floor(t * 2) % 2 === 0) gfx.text(txt, x, y, { size: ui.portrait ? 16 : 12, align: 'center', color: PAL.dim });
+}
+
+// Draw a menu in a centered panel sized for the current screen shape.
+// desc: optional text shown under the menu (wrapped).
+export function menuPanel(menu, title, opts = {}) {
+  const P = ui.portrait;
+  const fs = ui.fs, lh = ui.lh;
+  menu.size = fs; menu.lh = ui.mlh;
+  const pw = P ? W - 24 : Math.min(opts.w || 300, W - 40);
+  const px = Math.round((W - pw) / 2);
+  menu.x = px + 30; menu.w = pw - 50;
+  const desc = opts.desc ? gfx.wrap(opts.desc, pw - 50, fs) : [];
+  const rows = Math.min(menu.maxRows, menu.items.length);
+  const h = 44 + rows * menu.lh + (desc.length ? 16 + desc.length * lh : 0) + 14;
+  const py = Math.max(6, Math.round((H - h) / 2));
+  if (opts.dim !== false) gfx.alpha(0.5, () => gfx.rect(0, 0, W, H, '#000'));
+  gfx.panel(px, py, pw, h);
+  gfx.text(title, W / 2, py + 13, { size: P ? 12 : 10, head: true, align: 'center', color: PAL.hi });
+  menu.y = py + 38;
+  menu.draw();
+  if (desc.length) {
+    const dy = menu.y + rows * menu.lh + 8;
+    gfx.rect(px + 20, dy, pw - 40, 1, PAL.edgeLo);
+    desc.forEach((l, i) => gfx.text(l, px + 26, dy + 8 + i * lh, { size: fs, color: PAL.dim }));
+  }
 }

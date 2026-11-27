@@ -1,6 +1,6 @@
 // Ambient life on the travel screen: passing cars, green freeway signs,
 // state welcome signs and crew chatter bubbles.
-import { gfx, PAL } from './gfx.js';
+import { gfx, PAL, W } from './gfx.js';
 import { drawPortrait } from './ui.js';
 import { NODES, milesToEnd } from '../data/route.js';
 import { CHATTER } from '../data/chatter.js';
@@ -28,11 +28,11 @@ export class RoadLife {
     if (this.carT <= 0) {
       this.carT = rnd(1.2, 3.5) * busy;
       const truck = Math.random() < 0.25;
-      if (Math.random() < 0.65) this.cars.push({ lane: 0, x: 500, v: -(v + rnd(140, 200)), c: CAR_COLORS[Math.floor(Math.random() * 8)], truck });
+      if (Math.random() < 0.65) this.cars.push({ lane: 0, x: W + 20, v: -(v + rnd(140, 200)), c: CAR_COLORS[Math.floor(Math.random() * 8)], truck });
       else if (moving) this.cars.push({ lane: 1, x: -60, v: rnd(30, 60), c: CAR_COLORS[Math.floor(Math.random() * 8)], truck: false });
     }
     for (const c of this.cars) c.x += (c.lane === 0 ? c.v : c.v) * dt;
-    this.cars = this.cars.filter((c) => c.x > -120 && c.x < 560);
+    this.cars = this.cars.filter((c) => c.x > -120 && c.x < W + 80);
 
     // signs
     if (moving) {
@@ -44,13 +44,13 @@ export class RoadLife {
         const port = Math.round(left + milesToEnd(s.leg.to));
         const lines = [[to.name.split(',')[0].replace(/^The /, '').toUpperCase(), left]];
         if (s.leg.to !== 'portland') lines.push(['PORTLAND', port]);
-        this.props.push({ kind: 'sign', x: 500, lines });
+        this.props.push({ kind: 'sign', x: W + 20, lines });
       }
       // state line
       const lat = s.lat();
       if (this.lastLat !== null && this.lastLat < 42 && lat >= 41.9 && !s.flags.welcomeOR) {
         s.flags.welcomeOR = 1;
-        this.props.push({ kind: 'welcome', x: 500 });
+        this.props.push({ kind: 'welcome', x: W + 20 });
       }
       this.lastLat = lat;
     }
@@ -150,7 +150,7 @@ export class RoadLife {
     const w = Math.min(230, gfx.measure(txt, 14) + 30);
     const lines = gfx.wrap(txt, w - 28, 14);
     const h = 8 + lines.length * 13;
-    const x = Math.round(Math.max(4, Math.min(476 - w, rvX + 40 - w / 2)));
+    const x = Math.round(Math.max(4, Math.min(W - 4 - w, rvX + 40 - w / 2)));
     const y = Math.round(rvY - h - 10);
     gfx.alpha(a, () => {
       gfx.rect(x - 1, y - 1, w + 2, h + 2, '#1b1424');

@@ -8,28 +8,34 @@
   <meta name="description" content="A pixel-art road trip survival game: one 1999 Class A RV, two humans, a bull terrier and two cats, San Diego to Portland.">
   <link rel="icon" href="assets/ui/favicon.png">
   <link rel="apple-touch-icon" href="assets/ui/icon192.png">
+  <link rel="manifest" href="manifest.webmanifest">
   <meta property="og:title" content="Bela's Big Drive">
   <meta property="og:description" content="San Diego to Portland in a 1999 Class A RV with two humans, a bull terrier and two cats. A pixel-art road trip survival game.">
   <meta property="og:image" content="https://joemattie.github.io/bela-big-drive/assets/ui/og.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <style>
-    html, body { margin: 0; height: 100%; background: #0e0a14; overflow: hidden; touch-action: none; }
+    @font-face { font-family: 'HeadPixelCSS'; src: url(assets/fonts/PressStart2P-Regular.ttf); }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; height: 100%; overflow: hidden; touch-action: none; overscroll-behavior: none;
+      -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; background: #1b1424; }
     body { display: flex; align-items: center; justify-content: center; }
-    canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; touch-action: none; outline: none; }
+    canvas#game { image-rendering: pixelated; image-rendering: crisp-edges; display: block; touch-action: none; outline: none; }
     noscript { color: #f7ecd2; font-family: monospace; }
-    #rotate { display: none; position: fixed; bottom: 18px; left: 0; right: 0; text-align: center; color: #c8873a; font: 16px monospace; pointer-events: none; }
-    @media (orientation: portrait) and (max-width: 700px) {
-      body { flex-direction: column; }
-      #rotate { display: block; }
-    }
+    #corner { position: fixed; right: calc(env(safe-area-inset-right, 0px) + 6px); top: calc(env(safe-area-inset-top, 0px) + 6px);
+      display: flex; gap: 6px; z-index: 3; opacity: .45; }
+    #corner:hover { opacity: 1; }
+    #corner button { border: 1px solid #c8873a; background: #2e2140cc; color: #f7ecd2; font-family: 'HeadPixelCSS', monospace;
+      font-size: 8px; padding: 6px 7px; cursor: pointer; border-radius: 3px; }
+    #corner button.off { text-decoration: line-through; }
   </style>
 </head>
 <body>
   <canvas id="game" width="480" height="300" tabindex="0"></canvas>
   <noscript>This game needs JavaScript.</noscript>
-  <div id="rotate">↻ Rotate your phone for a bigger windshield</div>
-  <script>window.BBD_VERSION = '1';</script>
+  <script>window.BBD_VERSION = '3';</script>
   <script type="module" src="src/main.js"></script>
 </body>
 </html>

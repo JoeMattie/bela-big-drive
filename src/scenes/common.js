@@ -1,15 +1,16 @@
 // Shared overlays: situation menu, setting pickers, supplies/status, rest.
-import { gfx, PAL } from '../engine/gfx.js';
+import { gfx, PAL, W, H, ui } from '../engine/gfx.js';
 import { input } from '../engine/input.js';
 import { audio } from '../engine/audio.js';
-import { Menu, drawPortrait, drawIcon, bar, continueHint } from '../engine/ui.js';
-import { drawScene } from '../engine/art.js';
+import { Menu, drawPortrait, drawIcon, bar, continueHint, menuPanel } from '../engine/ui.js';
+import { drawScene, drawArt } from '../engine/art.js';
 import { game } from '../game/game.js';
 import { PACES, SNACKS, SLEEPS, chance } from '../game/state.js';
 import { ITEMS } from '../data/items.js';
 import { MEMBER } from '../data/party.js';
 import { showResult, runResultFn } from './message.js';
 import { saveGame, clearSave } from '../game/save.js';
+import { toggleFullscreen, canFullscreen } from '../engine/layout.js';
 
 export function checkGameOver() {
   const s = game.state;
@@ -73,16 +74,14 @@ game.register('situation', () => ({
     this.menu = new Menu([
       { label: 'Continue on the road', onPick: () => game.pop() },
       ...commonItems(s, { traveling: true }),
+      ...(canFullscreen() ? [{ label: 'Full screen on/off', onPick: () => { toggleFullscreen(); game.pop(); } }] : []),
       { label: 'Save & quit to title', onPick: () => { saveGame(s); game.go('title'); } },
     ], { x: 120, y: 64, w: 250, onBack: () => game.pop() });
   },
   resume() { this.enter(); },
   update(dt) { this.t += dt; this.menu.update(dt); },
   draw() {
-    gfx.alpha(0.5, () => gfx.rect(0, 0, 480, 300, '#000'));
-    gfx.panel(96, 30, 288, 236);
-    gfx.text('WHAT NOW?', 240, 42, { size: 10, head: true, align: 'center', color: PAL.hi });
-    this.menu.draw();
+    menuPanel(this.menu, 'WHAT NOW?', { w: 300 });
   },
 }));
 
@@ -106,13 +105,8 @@ game.register('choose', () => ({
   },
   update(dt) { this.menu.update(dt); },
   draw() {
-    gfx.alpha(0.5, () => gfx.rect(0, 0, 480, 300, '#000'));
-    gfx.panel(50, 40, 380, 200);
-    gfx.text(this.k.title, 240, 54, { size: 10, head: true, align: 'center', color: PAL.hi });
-    this.menu.draw();
     const d = this.k.table[this.ids[this.menu.sel]];
-    gfx.rect(66, 146, 348, 1, PAL.edgeLo);
-    gfx.wrap(d.desc, 340, 16).forEach((l, i) => gfx.text(l, 70, 156 + i * 18, { color: PAL.dim }));
+    menuPanel(this.menu, this.k.title, { w: 380, desc: d.desc });
   },
 }));
 
@@ -184,17 +178,15 @@ game.register('rest', () => ({
   draw() {
     const s = game.state;
     if (this.phase === 'ask') {
-      gfx.alpha(0.5, () => gfx.rect(0, 0, 480, 300, '#000'));
-      gfx.panel(130, 60, 220, 130);
-      gfx.text('REST HOW LONG?', 240, 74, { size: 10, head: true, align: 'center', color: PAL.hi });
-      this.menu.draw();
+      menuPanel(this.menu, 'REST HOW LONG?', { w: 240 });
     } else {
-      gfx.rect(0, 0, 480, 300, PAL.night);
-      drawScene(s.sleep === 'walmart' ? 'walmart_night' : 'campsite_night', 0, 0, 480, 200, this.t);
-      gfx.panel(0, 200, 480, 100);
-      gfx.text('Resting…', 240, 220, { size: 14, head: true, align: 'center', color: PAL.hi });
-      gfx.text(s.dateStr(), 240, 246, { size: 16, align: 'center' });
-      continueHint(this.t, 240, 274);
+      gfx.rect(0, 0, W, H, PAL.night);
+      const ay = Math.round(Math.max(0, (H - 300) / 2));
+      drawArt(s.sleep === 'walmart' ? 'walmart_night' : 'campsite_night', ay, this.t);
+      gfx.panel(0, ay + 200, W, Math.max(100, H - ay - 200));
+      gfx.text('Resting…', W / 2, ay + 220, { size: 14, head: true, align: 'center', color: PAL.hi });
+      gfx.text(s.dateStr(), W / 2, ay + 246, { size: ui.fs, align: 'center' });
+      continueHint(this.t, W / 2, ay + 274);
     }
   },
 }));
@@ -219,11 +211,12 @@ game.register('night', () => ({
   draw() {
     const a = Math.min(1, this.t * 3, (2.6 - this.t) * 3);
     gfx.alpha(Math.max(0, a), () => {
-      gfx.rect(0, 0, 480, 300, '#000');
-      drawScene(this.sleep === 'walmart' ? 'walmart_night' : 'campsite_night', 0, 30, 480, 200, this.t);
-      gfx.text(`Night ${this.nightNo} · ${(SLEEPS[this.sleep] || SLEEPS.rvpark).name}`, 240, 8, { size: 10, head: true, align: 'center', color: PAL.hi });
-      gfx.text(this.where, 240, 236, { size: 16, align: 'center', color: PAL.dim });
-      gfx.text(this.line, 240, 256, { size: 16, align: 'center' });
+      gfx.rect(0, 0, W, H, '#000');
+      const ay = Math.round((H - 260) / 2);
+      drawArt(this.sleep === 'walmart' ? 'walmart_night' : 'campsite_night', ay + 30, this.t);
+      gfx.text(`Night ${this.nightNo} · ${(SLEEPS[this.sleep] || SLEEPS.rvpark).name}`, W / 2, ay + 8, { size: 10, head: true, align: 'center', color: PAL.hi });
+      gfx.text(this.where, W / 2, ay + 236, { size: ui.fs, align: 'center', color: PAL.dim });
+      gfx.text(this.line, W / 2, ay + 258, { size: ui.fs, align: 'center' });
     });
   },
 }));
