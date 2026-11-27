@@ -71,11 +71,36 @@ game.register('arrive', () => ({
     gfx.strokeRect(bx, by, bw, 30, PAL.edge);
     gfx.text(this.n.name.toUpperCase(), W / 2, by + 9, { size: 12, head: true, align: 'center', color: PAL.hi });
     const py = ay + 196;
-    gfx.panel(0, py, W, H - py);
     const x0 = P ? 24 : 20;
-    gfx.text(s.dateStr() + (this.n.elev ? `  ·  Elev. ${this.n.elev.toLocaleString()} ft` : ''), x0, py + 10, { size: P ? 18 : 14, color: PAL.dim });
-    this.tw.draw(x0, py + (P ? 40 : 28), PAL.text, ui.lh - 1);
-    if (this.tw.done) continueHint(this.t);
+    if (P) {
+      // sized text card, then the crew, then a big continue button
+      gfx.rect(0, py, W, H - py, '#1b1424');
+      const th = 50 + this.tw.lines.length * (ui.lh - 1) + 16;
+      gfx.panel(10, py + 8, W - 20, th);
+      gfx.text(s.dateStr() + (this.n.elev ? `  ·  Elev. ${this.n.elev.toLocaleString()} ft` : ''), x0, py + 20, { size: 18, color: PAL.dim });
+      this.tw.draw(x0, py + 48, PAL.text, ui.lh - 1);
+      let y = py + th + 24;
+      const size = 60, gap = Math.floor((W - 48 - 5 * size) / 4);
+      const by = H - 76;
+      if (y + size + 30 < by - 10) {
+        gfx.text('THE CREW', W / 2, y, { size: 10, head: true, align: 'center', color: PAL.hi });
+        y += 20;
+        s.members.forEach((m, i) => {
+          const x = 24 + i * (size + gap);
+          drawPortrait(m.id, x, y, m.gone ? 'neutral' : m.ailment || m.health < 40 ? 'sick' : 'happy', { size, gone: m.gone });
+          if (!m.gone) bar(x, y + size + 5, size, 6, m.health / 100);
+          gfx.text(MEMBER[m.id].name, x + size / 2, y + size + 14, { size: 16, align: 'center', color: PAL.dim });
+        });
+      }
+      gfx.rect(24, by, W - 48, 52, this.tw.done ? '#2a6a3a' : '#3d2b52');
+      gfx.strokeRect(24, by, W - 48, 52, this.tw.done ? PAL.good : PAL.edgeLo);
+      gfx.text(this.tw.done ? 'TAP TO CONTINUE ▸' : '…', W / 2, by + 20, { size: 10, head: true, align: 'center', color: PAL.hi });
+    } else {
+      gfx.panel(0, py, W, H - py);
+      gfx.text(s.dateStr() + (this.n.elev ? `  ·  Elev. ${this.n.elev.toLocaleString()} ft` : ''), x0, py + 10, { size: 14, color: PAL.dim });
+      this.tw.draw(x0, py + 28, PAL.text, ui.lh - 1);
+      if (this.tw.done) continueHint(this.t);
+    }
   },
 }));
 

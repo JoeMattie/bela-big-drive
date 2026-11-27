@@ -275,7 +275,16 @@ export function drawFull(img, x, y, opts = {}) {
     c.imageSmoothingEnabled = false;
   }
   if (opts.extendY !== false) {
-    if (y > 0) c.drawImage(img, 0, 0, w, 1, 0, 0, W, y + 1);
+    if (y > 0) {
+      // soft continuation of the sky: blurred top band of the art, faded to its top color
+      c.save();
+      c.imageSmoothingEnabled = true;
+      c.drawImage(img, 0, 0, w, 1, 0, 0, W, y + 1);
+      try { c.filter = 'blur(12px) saturate(1.1)'; } catch (_) { /* ignore */ }
+      c.drawImage(img, 0, 0, w, Math.min(40, h), -30, y - Math.min(y, 160) - 10, W + 60, Math.min(y, 160) + 30);
+      c.restore();
+      c.imageSmoothingEnabled = false;
+    }
     if (y + h < H) {
       const bh = H - (y + h);
       c.save();

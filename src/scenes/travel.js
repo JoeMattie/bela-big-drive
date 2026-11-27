@@ -258,6 +258,31 @@ game.register('travel', () => ({
       gfx.text(msg, W / 2, 154, { size: 16, align: 'center', color: Math.floor(this.t * 2) % 2 ? PAL.hi : '#fff' });
     } else if (!this.busy && Math.floor(this.t * 1.5) % 2 === 0) gfx.text(this.hint(), W / 2, 174, { size: 14, align: 'center', color: '#fff', shadowColor: '#000' });
   },
+  // San Diego ──●────── Portland, with the RV at the current position
+  routeStrip(s, x, y, w) {
+    const leg = s.leg;
+    const lag = leg ? leg.done - (this.shownDone ?? leg.done) : 0;
+    const done = s.milesTotal - lag;
+    const togo = s.milesToGo() + lag;
+    const f = Math.max(0, Math.min(1, done / Math.max(1, done + togo)));
+    const nextF = leg ? Math.min(1, (done + Math.max(0, leg.miles - (this.shownDone ?? leg.done))) / Math.max(1, done + togo)) : f;
+    gfx.text('SAN DIEGO', x, y, { size: 8, head: true, color: PAL.dim });
+    gfx.text('PORTLAND', x + w, y, { size: 8, head: true, color: PAL.dim, align: 'right' });
+    const ly = y + 26;
+    gfx.rect(x, ly, w, 6, '#1b1424');
+    gfx.rect(x + 1, ly + 1, Math.round((w - 2) * f), 4, PAL.edge);
+    for (let i = 1; i < 10; i++) gfx.rect(x + Math.round((w * i) / 10), ly + 7, 1, 3, PAL.edgeLo);
+    // next stop marker
+    const nx = x + Math.round(w * nextF);
+    gfx.rect(nx - 1, ly - 6, 3, 18, PAL.hi);
+    // RV marker
+    const rx = x + Math.round(w * f);
+    gfx.rect(rx - 9, ly - 12, 18, 10, '#f1ead8');
+    gfx.rect(rx - 9, ly - 6, 18, 2, '#2a9d8f');
+    gfx.rect(rx + 5, ly - 11, 3, 4, '#6aa8c8');
+    gfx.rect(rx - 6, ly - 3, 4, 4, '#1a1a1a'); gfx.rect(rx + 3, ly - 3, 4, 4, '#1a1a1a');
+    gfx.text(`${Math.round(f * 100)}% of the way home`, x + w / 2, ly + 16, { size: 18, align: 'center', color: PAL.dim });
+  },
   drawPanelPortrait(s, vh) {
     const st = this.stats(s);
     const y0 = vh - 4;
@@ -291,6 +316,8 @@ game.register('travel', () => ({
     y += size + 44;
     // big stop button
     const by = Math.max(y, H - 70), bh = 48;
+    // route progress strip fills the space above the button
+    if (by - y > 70) this.routeStrip(s, 30, y + Math.round((by - y) / 2) - 24, W - 60);
     if (by + bh < H - 6) {
       gfx.rect(24, by, W - 48, bh, this.busy ? '#3d2b52' : this.waiting ? '#2a6a3a' : '#5a3a20');
       gfx.strokeRect(24, by, W - 48, bh, this.waiting ? PAL.good : PAL.edge);
