@@ -41,11 +41,25 @@ drive a **1999 Forest River Georgetown** Class A motorhome from **San Diego to P
 
 ![Travel](docs/screenshots/travel.png)
 ![Oregon](docs/screenshots/oregon.png)
+![Arriving in Weed](docs/screenshots/arrival.png)
+![Siskiyou Summit](docs/screenshots/pass.png)
+
+## Plays great on phones
+
+The screen reshapes itself to fit any device — wider on wide phones, a tall layout with big buttons
+when you hold your phone upright — so there are never black bars.
+
+<p>
+  <img src="docs/screenshots/mobile_title.png" width="260" alt="Title screen on a phone">
+  &nbsp;
+  <img src="docs/screenshots/mobile_travel.png" width="260" alt="Driving on a phone">
+</p>
 
 ## Controls
 
 Keyboard: arrows / number keys to choose, **Enter** to confirm, **Esc** to go back.
-Mouse & touch: tap anything. While driving, press any key or tap to stop and size up the situation.
+Touch: swipe up/down to move the highlight, tap an item to highlight it and tap again to choose.
+Mouse: click anything. While driving, press any key or tap to stop and size up the situation.
 
 ## Tech
 
